@@ -1,4 +1,5 @@
 import "./globals.css";
+import LogoutButton from "./components/LogoutButton";
 
 export const metadata = {
   title: "ToneMender",
@@ -8,7 +9,10 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <LogoutButton />
+        {children}
+      </body>
     </html>
   );
 }
