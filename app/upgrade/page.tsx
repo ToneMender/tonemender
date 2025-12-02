@@ -1,53 +1,77 @@
 "use client";
 
 import { useState } from "react";
+import { supabase } from "../../lib/supabase";
 
 export default function UpgradePage() {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  async function handleCheckout() {
+  async function startCheckout(plan: "monthly" | "yearly") {
     setLoading(true);
+    setError("");
 
-    const res = await fetch("/api/checkout", {
-      method: "POST",
-    });
+    // Get Supabase session (user must be logged in)
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
 
-    const { url } = await res.json();
+    if (!token) {
+      setError("You must be logged in before upgrading.");
+      setLoading(false);
+      return;
+    }
 
-    if (url) {
-      window.location.href = url;
-    } else {
-      alert("Failed to start checkout.");
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ plan }),
+      });
+
+      const json = await res.json();
+
+      if (json.url) {
+        window.location.href = json.url; // Redirect to Stripe Checkout
+      } else {
+        setError(json.error || "Failed to start checkout.");
+      }
+    } catch (err) {
+      setError("Network error. Try again.");
     }
 
     setLoading(false);
   }
 
   return (
-    <main className="max-w-xl mx-auto p-6">
+    <main className="max-w-xl mx-auto p-6 text-center">
       <h1 className="text-3xl font-bold mb-4">Upgrade to ToneMender Pro</h1>
 
-      <p className="mb-6 text-gray-700">
-        Get unlimited rewrites, priority processing, and future premium features.
+      <p className="text-gray-700 mb-6">
+        Unlock unlimited rewrites, priority processing, and pro-only features.
       </p>
 
-      <div className="border p-4 rounded-lg mb-6 bg-gray-50">
-        <h2 className="text-xl font-semibold">What You Get</h2>
-        <ul className="list-disc ml-6 mt-3">
-          <li>Unlimited rewrites</li>
-          <li>Faster results</li>
-          <li>Saved messages & drafts</li>
-          <li>Early access to new tones</li>
-        </ul>
-      </div>
+      {error && <p className="text-red-600 mb-3">{error}</p>}
 
-      <button
-        onClick={handleCheckout}
-        disabled={loading}
-        className="bg-purple-600 text-white p-3 rounded w-full text-lg"
-      >
-        {loading ? "Redirecting..." : "Upgrade for $4.99/month"}
-      </button>
+      <div className="space-y-4">
+        <button
+          disabled={loading}
+          onClick={() => startCheckout("monthly")}
+          className="w-full bg-purple-600 text-white py-3 rounded-lg disabled:bg-purple-300"
+        >
+          {loading ? "Loading…" : "Subscribe Monthly — $4.99"}
+        </button>
+
+        <button
+          disabled={loading}
+          onClick={() => startCheckout("yearly")}
+          className="w-full bg-indigo-600 text-white py-3 rounded-lg disabled:bg-indigo-300"
+        >
+          {loading ? "Loading…" : "Subscribe Yearly — $49.99"}
+        </button>
+      </div>
     </main>
   );
 }
