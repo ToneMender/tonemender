@@ -11,49 +11,33 @@ export async function POST(request: Request) {
     const { token, message, recipient } = await request.json();
 
     if (!token) {
-      return NextResponse.json(
-        { error: "Missing auth token" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Missing auth token" }, { status: 401 });
     }
 
-    // Validate session
-    const { data: authData, error: authError } =
-      await supabase.auth.getUser(token);
-
-    if (authError || !authData.user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+    const { data: authData } = await supabase.auth.getUser(token);
+    const user = authData?.user;
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = authData.user.id;
-
-    // ---------------------------------------------------------
-    // 🔥 CHECK IF USER IS PRO
-    // ---------------------------------------------------------
+    // 📌 CHECK FREE LIMITS
     const { data: profile } = await supabase
       .from("profiles")
       .select("is_pro")
-      .eq("id", userId)
+      .eq("id", user.id)
       .single();
 
-    const isPro = profile?.is_pro === true;
-
-    // ---------------------------------------------------------
-    // 🔥 FREE USER LIMIT (3 REWRITES PER DAY)
-    // ---------------------------------------------------------
-    if (!isPro) {
+    if (!profile?.is_pro) {
+      // count rewrites done today from rewrite_usage
       const today = new Date().toISOString().split("T")[0];
 
-      const { count } = await supabase
+      const { data: usage } = await supabase
         .from("rewrite_usage")
-        .select("id", { count: "exact" })
-        .eq("user_id", userId)
+        .select("*")
+        .eq("user_id", user.id)
         .gte("created_at", today);
 
-      if ((count ?? 0) >= 3) {
+      if ((usage?.length || 0) >= 3) {
         return NextResponse.json(
           { error: "Daily limit reached" },
           { status: 429 }
@@ -61,9 +45,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // ---------------------------------------------------------
-    // 🔥 RUN THE AI REWRITE
-    // ---------------------------------------------------------
+    // ------- AI Rewrite -------
     const prompt = `
 Rewrite the following message into 3 versions for a ${recipient}:
 
@@ -85,28 +67,24 @@ CLEAR: <clear>
       messages: [{ role: "user", content: prompt }],
     });
 
-    const raw: string = completion.choices[0].message.content ?? "";
+    const raw = completion.choices[0].message.content ?? "";
 
-    const extractBlock = (label: string): string => {
+    const extract = (label: string) => {
       const regex = new RegExp(`${label}:([\\s\\S]*?)(?=\\n[A-Z]+:|$)`, "i");
       const match = raw.match(regex);
       return match ? match[1].trim() : "";
     };
 
-    const result = {
-      soft: extractBlock("SOFT"),
-      calm: extractBlock("CALM"),
-      clear: extractBlock("CLEAR"),
-    };
+    const soft = extract("SOFT");
+    const calm = extract("CALM");
+    const clear = extract("CLEAR");
 
-    // ---------------------------------------------------------
-    // 🔥 LOG REWRITE USAGE (FREE USERS ONLY)
-    // ---------------------------------------------------------
+    // 📌 RECORD REWRITE IN rewrite_usage
     await supabase.from("rewrite_usage").insert({
-      user_id: userId,
+      user_id: user.id,
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({ soft, calm, clear });
   } catch (err: any) {
     console.error("REWRITE ERROR:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });

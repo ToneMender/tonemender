@@ -8,40 +8,50 @@ export default function AccountPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState<string | null>(null);
+  const [isPro, setIsPro] = useState(false);
   const [stats, setStats] = useState({ today: 0, total: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      // Get logged-in user
-      const { data: userData } = await supabase.auth.getUser();
+      // -------------------------
+      // GET USER SESSION
+      // -------------------------
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
 
-      if (!userData.user) {
-        router.replace("/sign-in");
+      if (!user) {
+        router.replace("/sign-in?error=not-authenticated");
         return;
       }
-
-      const user = userData.user;
 
       setEmail(user.email);
 
-      // Count rewrites
+      // -------------------------
+      // GET PRO STATUS
+      // -------------------------
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("is_pro")
+        .eq("id", user.id)
+        .single();
+
+      setIsPro(profile?.is_pro ?? false);
+
+      // -------------------------
+      // GET REWRITE COUNTS
+      // from rewrite_usage table
+      // -------------------------
       const todayStr = new Date().toISOString().split("T")[0];
 
-      const { data: messages, error } = await supabase
-        .from("messages")
+      const { data: usage } = await supabase
+        .from("rewrite_usage")
         .select("*")
         .eq("user_id", user.id);
 
-      if (error) {
-        console.error("LOAD MESSAGES ERROR:", error);
-        setLoading(false);
-        return;
-      }
-
-      const total = messages?.length || 0;
+      const total = usage?.length || 0;
       const today =
-        messages?.filter((m) => m.created_at.startsWith(todayStr)).length || 0;
+        usage?.filter((u) => u.created_at.startsWith(todayStr)).length || 0;
 
       setStats({ today, total });
       setLoading(false);
@@ -50,80 +60,42 @@ export default function AccountPage() {
     load();
   }, [router]);
 
+  // -------------------------
   // LOGOUT
+  // -------------------------
   async function handleLogout() {
     await supabase.auth.signOut();
-    router.push("/");
+    router.replace("/");
   }
 
-  // DELETE ALL MESSAGES
-  async function handleDeleteData() {
-    const ok = confirm("Delete ALL saved messages? This cannot be undone.");
-    if (!ok) return;
+  if (loading) return <p className="p-6">Loading account...</p>;
 
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData.user;
-    if (!user) return;
-
-    await supabase.from("messages").delete().eq("user_id", user.id);
-
-    alert("All messages deleted.");
-    location.reload();
-  }
-
-  // DELETE ACCOUNT
-  async function handleDeleteAccount() {
-    const ok = confirm(
-      "Are you sure you want to delete your ENTIRE account permanently?"
-    );
-    if (!ok) return;
-
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData.user;
-    if (!user) return;
-
-    // Requires service role on server — but at least run client call
-    const { error } = await supabase.auth.admin.deleteUser(user.id);
-
-    if (error) {
-      console.error("DELETE ACCOUNT ERROR:", error);
-      alert("Error deleting account. Check Supabase service role permissions.");
-      return;
-    }
-
-    alert("Your account has been deleted.");
-    router.push("/");
-  }
-
-  if (loading) return <p className="p-5">Loading account...</p>;
-
+  // -------------------------
+  // UI
+  // -------------------------
   return (
     <main className="max-w-xl mx-auto p-6">
-      {/* BACK BUTTON */}
-      <button
-        onClick={() => router.push("/")}
-        className="text-blue-600 underline mb-4"
-      >
-        ← Back to Home
-      </button>
-
       <h1 className="text-3xl font-bold mb-4">Your Account</h1>
 
-      {/* Profile Section */}
+      {/* PROFILE INFO */}
       <div className="border p-4 rounded mb-6 bg-white shadow">
         <h2 className="text-xl font-semibold mb-2">Profile</h2>
 
-        <p className="text-gray-700 mb-2">
+        <p className="mb-2">
           <strong>Email:</strong> {email}
         </p>
 
-        <p className="text-gray-700 mb-2">
-          <strong>Status:</strong>{" "}
-          <span className="text-purple-600 font-semibold">Free User</span>
+        <p className="mb-2">
+          <strong>Role:</strong>{" "}
+          {isPro ? (
+            <span className="text-green-600 font-semibold">Pro User</span>
+          ) : (
+            <span className="text-gray-700">Free User</span>
+          )}
         </p>
       </div>
 
-      {/* Usage Stats */}
+      {/* USAGE INFO */}
       <div className="border p-4 rounded mb-6 bg-white shadow">
         <h2 className="text-xl font-semibold mb-2">Usage</h2>
 
@@ -135,7 +107,7 @@ export default function AccountPage() {
         </p>
       </div>
 
-      {/* Security */}
+      {/* SECURITY */}
       <div className="border p-4 rounded mb-6 bg-white shadow">
         <h2 className="text-xl font-semibold mb-2">Security</h2>
 
@@ -147,23 +119,62 @@ export default function AccountPage() {
         </button>
       </div>
 
-      {/* Danger Zone */}
+      {/* DANGER ZONE */}
       <div className="border p-4 rounded bg-white shadow">
-        <h2 className="text-xl font-semibold mb-2 text-red-600">Danger Zone</h2>
+        <h2 className="text-xl font-semibold mb-2 text-red-600">
+          Danger Zone
+        </h2>
 
         <button
-          onClick={handleDeleteData}
+          onClick={async () => {
+            const ok = confirm("This will delete all your saved drafts. Continue?");
+            if (!ok) return;
+
+            const { data } = await supabase.auth.getSession();
+            const user = data.session?.user;
+            if (!user) return;
+
+            await supabase
+              .from("messages")
+              .delete()
+              .eq("user_id", user.id);
+
+            alert("All drafts deleted.");
+            location.reload();
+          }}
           className="border border-red-500 text-red-600 px-4 py-2 rounded mr-3"
         >
           Delete All Messages
         </button>
 
         <button
-          onClick={handleDeleteAccount}
+          onClick={async () => {
+            const ok = confirm("This will delete your ENTIRE account. Continue?");
+            if (!ok) return;
+
+            const { data } = await supabase.auth.getSession();
+            const user = data.session?.user;
+            if (!user) return;
+
+            await supabase.auth.admin.deleteUser(user.id);
+
+            alert("Account deleted.");
+            router.replace("/");
+          }}
           className="bg-red-600 text-white px-4 py-2 rounded"
         >
           Delete Account
         </button>
+      </div>
+
+      {/* BACK BUTTON */}
+      <div className="mt-6">
+        <a
+          href="/"
+          className="inline-block px-4 py-2 bg-gray-200 rounded text-sm"
+        >
+          ⬅ Back to Home
+        </a>
       </div>
     </main>
   );
