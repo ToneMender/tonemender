@@ -32,6 +32,7 @@ export default function LandingPage() {
 
   return (
     <main style={{ padding: "40px", maxWidth: "600px", margin: "auto" }}>
+      {/* Show logout only when logged in */}
       {loggedIn && (
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <LogoutButton />
@@ -45,45 +46,51 @@ export default function LandingPage() {
         relationship-safe communication.
       </p>
 
-      <div style={{ marginTop: "40px", display: "flex", gap: "16px" }}>
-        <Link
-          href="/rewrite"
-          style={{
-            padding: "10px 16px",
-            background: "#2563eb",
-            color: "white",
-            borderRadius: "6px",
-          }}
-        >
-          Rewrite Message
-        </Link>
+      {/* Show main navigation ONLY when logged in */}
+      {loggedIn && (
+        <div style={{ marginTop: "40px", display: "flex", gap: "16px" }}>
+          <Link
+            href="/rewrite"
+            style={{
+              padding: "10px 16px",
+              background: "#2563eb",
+              color: "white",
+              borderRadius: "6px",
+              textDecoration: "none",
+            }}
+          >
+            Rewrite Message
+          </Link>
 
-        <Link
-          href="/drafts"
-          style={{
-            padding: "10px 16px",
-            background: "#6b7280",
-            color: "white",
-            borderRadius: "6px",
-          }}
-        >
-          Drafts
-        </Link>
+          <Link
+            href="/drafts"
+            style={{
+              padding: "10px 16px",
+              background: "#6b7280",
+              color: "white",
+              borderRadius: "6px",
+              textDecoration: "none",
+            }}
+          >
+            Drafts
+          </Link>
 
-        <Link
-          href="/account"
-          style={{
-            padding: "10px 16px",
-            background: "#4f46e5",
-            color: "white",
-            borderRadius: "6px",
-          }}
-        >
-          Account
-        </Link>
-      </div>
+          <Link
+            href="/account"
+            style={{
+              padding: "10px 16px",
+              background: "#4f46e5",
+              color: "white",
+              borderRadius: "6px",
+              textDecoration: "none",
+            }}
+          >
+            Account
+          </Link>
+        </div>
+      )}
 
-      {/* Show Upgrade button ONLY if logged in AND not Pro */}
+      {/* Show upgrade ONLY if logged-in AND NOT pro */}
       {loggedIn && !isPro && (
         <div style={{ marginTop: "30px" }}>
           <Link
@@ -101,7 +108,7 @@ export default function LandingPage() {
         </div>
       )}
 
-      {/* Show login/signup only if logged OUT */}
+      {/* Logged-out visitors see ONLY Sign-in + Sign-up */}
       {!loggedIn && (
         <div style={{ marginTop: "40px" }}>
           <Link
@@ -112,6 +119,7 @@ export default function LandingPage() {
               background: "#111827",
               color: "white",
               borderRadius: "6px",
+              textDecoration: "none",
             }}
           >
             Sign In
@@ -124,6 +132,7 @@ export default function LandingPage() {
               background: "#10b981",
               color: "white",
               borderRadius: "6px",
+              textDecoration: "none",
             }}
           >
             Sign Up
