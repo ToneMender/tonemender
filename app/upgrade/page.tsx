@@ -1,9 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "../../lib/supabase";
 
 export default function UpgradePage() {
+  const router = useRouter();
+  const [checking, setChecking] = useState(true);
   const [loading, setLoading] = useState<string | null>(null);
+
+  // 🔐 Auth gate: only logged-in users can see Upgrade
+  useEffect(() => {
+    async function checkAuth() {
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
+
+      if (!user) {
+        router.replace("/sign-in?error=not-authenticated");
+        return;
+      }
+
+      setChecking(false);
+    }
+
+    checkAuth();
+  }, [router]);
 
   async function subscribe(type: "monthly" | "yearly") {
     setLoading(type);
@@ -32,6 +53,14 @@ export default function UpgradePage() {
     }
   }
 
+  if (checking) {
+    return (
+      <main className="p-6 text-center">
+        Checking authentication…
+      </main>
+    );
+  }
+
   return (
     <main className="max-w-xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-4">Upgrade to ToneMender Pro</h1>
@@ -41,7 +70,6 @@ export default function UpgradePage() {
       </p>
 
       <div className="space-y-4">
-
         {/* MONTHLY */}
         <button
           onClick={() => subscribe("monthly")}
@@ -68,7 +96,7 @@ export default function UpgradePage() {
       {/* BACK BUTTON */}
       <button
         className="mt-6 text-blue-600 underline"
-        onClick={() => (window.location.href = "/")}
+        onClick={() => router.push("/")}
       >
         ← Back to Home
       </button>

@@ -2,38 +2,45 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { useRouter } from "next/navigation";
 
 export default function DraftsPage() {
-  const [drafts, setDrafts] = useState<any[]>([]);
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [drafts, setDrafts] = useState<any[]>([]);
 
   useEffect(() => {
-    loadDrafts();
-  }, []);
+    async function init() {
+      // Check auth
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
 
-  async function loadDrafts() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace("/sign-in?error=not-authenticated");
+        return;
+      }
 
-    if (!user) {
+      // Load drafts for this user
+      await loadDrafts(user.id);
       setLoading(false);
-      return;
     }
 
-    const { data, error } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+    async function loadDrafts(userId: string) {
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
 
-    if (!error && data) {
-      setDrafts(data);
+      if (!error && data) {
+        setDrafts(data);
+      }
     }
-    setLoading(false);
-  }
 
-  async function deleteDraft(id: string) {
+    init();
+  }, [router]);
+
+  async function handleDeleteDraft(id: string) {
     const ok = confirm("Delete this draft?");
     if (!ok) return;
 
@@ -41,24 +48,26 @@ export default function DraftsPage() {
 
     if (error) {
       alert("Failed to delete draft.");
-      console.error(error);
       return;
     }
 
-    // Remove draft from state instantly
     setDrafts((prev) => prev.filter((d) => d.id !== id));
   }
 
   if (loading) {
-    return <main className="p-6">Loading drafts…</main>;
+    return (
+      <main className="p-6 text-center">
+        Checking authentication…
+      </main>
+    );
   }
 
   return (
-    <main className="p-6">
-      {/* BACK BUTTON */}
+    <main className="p-6 max-w-2xl mx-auto">
+      {/* Back button */}
       <button
-        onClick={() => (window.location.href = "/")}
-        className="text-blue-600 underline mb-4"
+        onClick={() => router.push("/")}
+        className="mb-4 text-blue-600 underline"
       >
         ← Back to Home
       </button>
@@ -72,27 +81,37 @@ export default function DraftsPage() {
       <div className="flex flex-col gap-4">
         {drafts.map((d) => (
           <div key={d.id} className="border p-4 rounded bg-white shadow">
-            <p className="text-sm text-gray-400">{d.created_at}</p>
+            <p className="text-sm text-gray-400 mb-2">
+              {new Date(d.created_at).toLocaleString()}
+            </p>
 
-            <p className="mt-2">
+            <p className="mt-1">
               <strong>Original:</strong> {d.original}
             </p>
-            <p className="mt-2">
-              <strong>Soft:</strong> {d.soft_rewrite}
-            </p>
-            <p className="mt-2">
-              <strong>Calm:</strong> {d.calm_rewrite}
-            </p>
-            <p className="mt-2">
-              <strong>Clear:</strong> {d.clear_rewrite}
-            </p>
 
-            {/* DELETE DRAFT BUTTON */}
+            {d.soft_rewrite && (
+              <p className="mt-1">
+                <strong>Soft:</strong> {d.soft_rewrite}
+              </p>
+            )}
+
+            {d.calm_rewrite && (
+              <p className="mt-1">
+                <strong>Calm:</strong> {d.calm_rewrite}
+              </p>
+            )}
+
+            {d.clear_rewrite && (
+              <p className="mt-1">
+                <strong>Clear:</strong> {d.clear_rewrite}
+              </p>
+            )}
+
             <button
-              onClick={() => deleteDraft(d.id)}
-              className="mt-4 bg-red-600 text-white px-3 py-1 rounded"
+              onClick={() => handleDeleteDraft(d.id)}
+              className="mt-3 text-sm text-red-600 underline"
             >
-              Delete Draft
+              Delete draft
             </button>
           </div>
         ))}
