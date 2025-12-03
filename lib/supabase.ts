@@ -1,12 +1,26 @@
 import { createClient } from "@supabase/supabase-js";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+export const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      storage: {
+        getItem: (key) => document.cookie
+          .split("; ")
+          .find((row) => row.startsWith(key + "="))
+          ?.split("=")[1] ?? null,
 
-export const supabase = createClient(url, anon, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    storage: typeof window !== "undefined" ? window.localStorage : null,
-  },
-});
+        setItem: (key, value) => {
+          document.cookie = `${key}=${value}; Path=/; SameSite=Lax`;
+        },
+
+        removeItem: (key) => {
+          document.cookie = `${key}=; Path=/; Max-Age=0`;
+        },
+      },
+    },
+  }
+);

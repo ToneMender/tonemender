@@ -1,18 +1,27 @@
 "use client";
 
 import { supabase } from "../../lib/supabase";
-import { useRouter } from "next/navigation";
 
 export default function LogoutButton() {
-  const router = useRouter();
-
   async function handleLogout() {
+    // Clear Supabase session on the server
     await supabase.auth.signOut();
 
-    // Wait for Supabase to finish clearing session
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    // Clear cookies set by Supabase
+    document.cookie
+      .split(";")
+      .forEach((cookie) => {
+        const name = cookie.split("=")[0].trim();
+        if (name.startsWith("sb-")) {
+          document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`;
+        }
+      });
 
-    router.replace("/sign-in");
+    // Optional: clear localStorage if Supabase stored anything
+    localStorage.clear();
+
+    // Redirect to home page
+    window.location.href = "/";
   }
 
   return (
