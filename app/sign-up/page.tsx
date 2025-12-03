@@ -16,7 +16,10 @@ export default function SignupPage() {
     setLoading(true);
     setError("");
 
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
 
     if (error) {
       setError(error.message);
@@ -24,8 +27,7 @@ export default function SignupPage() {
       return;
     }
 
-    // Supabase logs user in automatically → redirect
-    setTimeout(() => router.replace("/"), 300);
+    router.replace("/sign-in");
   }
 
   return (
@@ -36,12 +38,35 @@ export default function SignupPage() {
         {error && <p className="text-red-500 mb-2">{error}</p>}
 
         <form onSubmit={handleSignup} className="flex flex-col gap-3">
-          <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="Email" className="border p-2 rounded" />
-          <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="Password" className="border p-2 rounded" />
+          <input
+            type="email"
+            placeholder="Email"
+            className="border p-2 rounded"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+
+          <input
+            type="password"
+            placeholder="Password"
+            className="border p-2 rounded"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+
           <button type="submit" disabled={loading} className="bg-green-600 text-white p-2 rounded">
             {loading ? "Creating..." : "Sign Up"}
           </button>
         </form>
+
+        <p className="mt-4 text-center text-sm">
+          Already have an account?{" "}
+          <a href="/sign-in" className="text-blue-600 underline">
+            Sign In
+          </a>
+        </p>
       </div>
     </main>
   );

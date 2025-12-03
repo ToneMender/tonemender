@@ -13,7 +13,6 @@ export default function AccountPage() {
 
   useEffect(() => {
     async function load() {
-      // Get logged-in user
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) {
         router.replace("/sign-in");
@@ -23,7 +22,6 @@ export default function AccountPage() {
       const userId = auth.user.id;
       setEmail(auth.user.email);
 
-      // -------- PRO STATUS ----------
       const { data: profile } = await supabase
         .from("profiles")
         .select("is_pro")
@@ -32,17 +30,14 @@ export default function AccountPage() {
 
       setIsPro(profile?.is_pro === true);
 
-      // -------- REWRITE COUNTS ----------
-      const todayStr = new Date().toISOString().split("T")[0];
+      const today = new Date().toISOString().split("T")[0];
 
-      // Daily count
       const { count: todayCount } = await supabase
         .from("rewrite_usage")
         .select("id", { count: "exact" })
         .eq("user_id", userId)
-        .gte("created_at", todayStr);
+        .gte("created_at", today);
 
-      // Total count
       const { count: totalCount } = await supabase
         .from("rewrite_usage")
         .select("id", { count: "exact" })
@@ -64,7 +59,29 @@ export default function AccountPage() {
     router.push("/");
   }
 
-  if (loading) return <p className="p-5">Loading account...</p>;
+  async function handleDeleteData() {
+    const ok = confirm("Delete ALL saved messages?");
+    if (!ok) return;
+
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) return;
+
+    await supabase.from("messages").delete().eq("user_id", auth.user.id);
+    location.reload();
+  }
+
+  async function handleDeleteAccount() {
+    const ok = confirm("Delete your ENTIRE account?");
+    if (!ok) return;
+
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) return;
+
+    await supabase.auth.admin.deleteUser(auth.user.id);
+    router.replace("/");
+  }
+
+  if (loading) return <main className="p-5">Loading...</main>;
 
   return (
     <main className="max-w-xl mx-auto p-6">
@@ -89,6 +106,26 @@ export default function AccountPage() {
           className="bg-gray-800 text-white px-4 py-2 rounded"
         >
           Logout
+        </button>
+      </div>
+
+      <div className="border p-4 rounded">
+        <h2 className="text-xl font-semibold mb-2 text-red-600">
+          Danger Zone
+        </h2>
+
+        <button
+          onClick={handleDeleteData}
+          className="border border-red-500 text-red-600 px-4 py-2 rounded mr-3"
+        >
+          Delete All Messages
+        </button>
+
+        <button
+          onClick={handleDeleteAccount}
+          className="bg-red-600 text-white px-4 py-2 rounded"
+        >
+          Delete Account
         </button>
       </div>
     </main>
