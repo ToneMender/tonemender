@@ -8,17 +8,29 @@ export default function UpgradePage() {
       <h1 className="text-3xl font-bold mb-6">Upgrade to ToneMender Pro</h1>
 
       <p className="mb-6 text-gray-700">
-        Get unlimited rewrites, faster processing, and full message history.
+        Unlock unlimited rewrites, faster processing, and full message history.
       </p>
 
+      {/* MONTHLY PLAN */}
       <a
-        href="/api/checkout"
-        className="bg-purple-600 text-white px-6 py-3 rounded inline-block"
+        href="/api/checkout?plan=monthly"
+        className="bg-purple-600 text-white px-6 py-3 rounded inline-block mb-4"
       >
-        Subscribe Monthly
+        Subscribe Monthly — $9.99/mo
       </a>
 
-      <div style={{ marginTop: "20px" }}>
+      <br />
+
+      {/* YEARLY PLAN */}
+      <a
+        href="/api/checkout?plan=yearly"
+        className="bg-indigo-600 text-white px-6 py-3 rounded inline-block"
+      >
+        Subscribe Yearly — $79.99/yr
+      </a>
+
+      {/* BACK BUTTON */}
+      <div style={{ marginTop: "30px" }}>
         <Link
           href="/"
           style={{
