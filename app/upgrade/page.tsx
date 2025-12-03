@@ -9,7 +9,7 @@ export default function UpgradePage() {
   const [checking, setChecking] = useState(true);
   const [loading, setLoading] = useState<string | null>(null);
 
-  // 🔐 Auth gate: only logged-in users can see Upgrade
+  // 🔐 Only logged-in users can see this page
   useEffect(() => {
     async function checkAuth() {
       const { data } = await supabase.auth.getSession();
@@ -30,22 +30,32 @@ export default function UpgradePage() {
     setLoading(type);
 
     try {
+      // Get current session + token
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+
+      if (!token) {
+        setLoading(null);
+        router.replace("/sign-in?error=not-authenticated");
+        return;
+      }
+
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type }),
+        body: JSON.stringify({ type, token }),
       });
 
-      const data = await res.json();
+      const dataJson = await res.json();
 
       if (!res.ok) {
-        alert(data.error || "Upgrade failed.");
+        alert(dataJson.error || "Upgrade failed.");
         setLoading(null);
         return;
       }
 
-      // Redirect to Stripe Checkout
-      window.location.href = data.url;
+      // Redirect to Stripe
+      window.location.href = dataJson.url;
     } catch (err) {
       console.error("SUBSCRIBE ERROR:", err);
       alert("Network error. Try again.");

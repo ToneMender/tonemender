@@ -2,28 +2,42 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
+export const runtime = "nodejs";
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
-const supabase = createClient(
+// Server-side Supabase client using service role key
+const supabaseServer = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SECRET_KEY!
+  process.env.SUPABASE_SECRET_KEY!, // service role key (server only)
+  { auth: { persistSession: false } }
 );
 
 export async function POST(req: Request) {
   try {
-    const { type } = await req.json();
+    const { type, token } = await req.json();
 
-    // Get logged-in user using Supabase Server Client
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    if (!token) {
       return NextResponse.json(
         { error: "Not authenticated" },
         { status: 401 }
       );
     }
+
+    // 🔐 Validate user from token (server-safe)
+    const {
+      data: auth,
+      error: authError,
+    } = await supabaseServer.auth.getUser(token);
+
+    if (authError || !auth?.user) {
+      return NextResponse.json(
+        { error: "Not authenticated" },
+        { status: 401 }
+      );
+    }
+
+    const user = auth.user;
 
     const priceId =
       type === "yearly"
@@ -37,15 +51,15 @@ export async function POST(req: Request) {
       );
     }
 
-    // IMPORTANT: attach userId to metadata
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/account?success=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/upgrade?canceled=true`,
+      customer_email: user.email ?? undefined,
       metadata: {
-        userId: user.id,   // 💥 THE FIX
+        userId: user.id, // 👈 used by webhook to set is_pro
       },
     });
 
