@@ -4,55 +4,72 @@ import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
-// Stripe client (NO apiVersion override)
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!); // 👈 no apiVersion
 
-// Supabase admin client (server-only!)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SECRET_KEY!
 );
 
 export async function POST(req: Request) {
-  const rawBody = await req.text(); // MUST be text, not JSON
+  const rawBody = await req.text();
   const signature = req.headers.get("stripe-signature")!;
-  const secret = process.env.STRIPE_WEBHOOK_SECRET!;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+
+  let event: Stripe.Event;
 
   try {
-    // Verify Stripe signature
-    const event = stripe.webhooks.constructEvent(rawBody, signature, secret);
-
-    // --- HANDLE CHECKOUT SUCCESS ---
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object as any;
-
-      const userId = session.metadata?.userId; // sent from checkout
-      const stripeCustomerId = session.customer; // cus_xxxxx
-
-      if (!userId) {
-        console.error("❌ Webhook missing userId metadata");
-        return NextResponse.json({ received: true });
-      }
-
-      // Update the user profile
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          is_pro: true,
-          stripe_customer_id: stripeCustomerId,
-        })
-        .eq("id", userId);
-
-      if (error) {
-        console.error("❌ SUPABASE UPDATE ERROR", error);
-      } else {
-        console.log("✅ User upgraded to PRO:", userId);
-      }
-    }
-
-    return NextResponse.json({ received: true });
+    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch (err: any) {
-    console.error("❌ WEBHOOK ERROR:", err.message);
+    console.error("WEBHOOK SIGNATURE ERROR:", err.message);
     return NextResponse.json({ error: err.message }, { status: 400 });
   }
+
+  // -----------------------------
+  // ✔️ Checkout Session Completed
+  // -----------------------------
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+
+    const userId = session.metadata?.userId;
+    const planType = session.metadata?.planType;
+    const customerId = session.customer as string;
+    const subscriptionId = session.subscription as string;
+
+    if (!userId) {
+      console.error("❌ Missing userId in metadata");
+      return NextResponse.json({ received: true });
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        is_pro: true,
+        stripe_customer_id: customerId,
+        stripe_subscription_id: subscriptionId,
+        plan_type: planType || "monthly",
+      })
+      .eq("id", userId);
+
+    if (error) console.error("SUPABASE PROFILE UPDATE ERROR:", error);
+  }
+
+  // -----------------------------
+  // ✔️ Subscription Deleted
+  // -----------------------------
+  if (event.type === "customer.subscription.deleted") {
+    const subscription = event.data.object as Stripe.Subscription;
+    const customerId = subscription.customer as string;
+
+    await supabase
+      .from("profiles")
+      .update({
+        is_pro: false,
+        plan_type: null,
+        stripe_subscription_id: null,
+      })
+      .eq("stripe_customer_id", customerId);
+  }
+
+  return NextResponse.json({ received: true });
 }

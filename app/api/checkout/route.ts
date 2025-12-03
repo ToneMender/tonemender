@@ -1,31 +1,19 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
 
-export const runtime = "nodejs";
-
-// Stripe client (NO apiVersion override)
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
-// Supabase server client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!); // 👈 no apiVersion
 
 export async function POST(req: Request) {
   try {
-    const { type } = await req.json();
+    const { type, userId } = await req.json();
 
-    // Get logged in user server-side
-    const { data: authData } = await supabase.auth.getUser();
-    const user = authData?.user;
-
-    if (!user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Missing userId" },
+        { status: 400 }
+      );
     }
 
-    // Choose price ID
     const priceId =
       type === "yearly"
         ? process.env.STRIPE_PRICE_YEARLY
@@ -33,24 +21,23 @@ export async function POST(req: Request) {
 
     if (!priceId) {
       return NextResponse.json(
-        { error: "Stripe price ID missing" },
+        { error: "Missing Stripe price ID" },
         { status: 400 }
       );
     }
 
-    // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
 
+      metadata: {
+        userId,
+        planType: type === "yearly" ? "yearly" : "monthly",
+      },
+
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/account?success=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/upgrade?canceled=true`,
-
-      // 👇 This is crucial
-      metadata: {
-        userId: user.id,
-      },
     });
 
     return NextResponse.json({ url: session.url });
