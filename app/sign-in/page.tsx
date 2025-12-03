@@ -27,10 +27,10 @@ export default function LoginPage() {
       return;
     }
 
-    // Redirect to home page (landing)
+    // Give Supabase time to save session
     setTimeout(() => {
       router.replace("/");
-    }, 200);
+    }, 300);
   }
 
   return (

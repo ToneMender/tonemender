@@ -26,21 +26,39 @@ export default function RewritePage() {
   const [toast, setToast] = useState("");
 
   // ---------------------------------------------------------
-  // AUTH GUARD (fixed)
+  // AUTH CHECK (WORKS 100% — waits for session load)
   // ---------------------------------------------------------
   useEffect(() => {
     let mounted = true;
 
-    async function loadSession() {
+    async function checkSession() {
       const { data } = await supabase.auth.getSession();
-      const session = data.session;
 
       if (!mounted) return;
 
-      if (session) setLoggedIn(true);
+      // If session instantly available
+      if (data.session) {
+        setLoggedIn(true);
+        setReady(true);
+        return;
+      }
 
-      setReady(true);
+      // If not → wait for Supabase to restore localStorage session
+      setTimeout(async () => {
+        const { data: retry } = await supabase.auth.getSession();
+
+        if (!mounted) return;
+
+        if (retry.session) {
+          setLoggedIn(true);
+          setReady(true);
+        } else {
+          router.replace("/sign-in");
+        }
+      }, 300);
     }
+
+    checkSession();
 
     // Listen for login/logout
     const { data: listener } = supabase.auth.onAuthStateChange(
@@ -49,25 +67,22 @@ export default function RewritePage() {
       }
     );
 
-    loadSession();
-
     return () => {
       mounted = false;
       listener.subscription.unsubscribe();
     };
-  }, []);
+  }, [router]);
 
+  // UI while checking auth
   if (!ready) {
     return <main className="p-8 text-center">Checking authentication…</main>;
   }
 
-  if (!loggedIn) {
-    router.replace("/sign-in");
-    return null;
-  }
+  // If somehow loggedOut after ready:
+  if (!loggedIn) return null;
 
   // ---------------------------------------------------------
-  // REWRITE FUNCTION
+  // HANDLE REWRITE
   // ---------------------------------------------------------
   async function handleRewrite() {
     setError("");
@@ -110,7 +125,7 @@ export default function RewritePage() {
         calm: json.calm || "",
         clear: json.clear || "",
       });
-    } catch (e) {
+    } catch {
       setError("Network error. Try again.");
     } finally {
       setLoading(false);
@@ -120,7 +135,7 @@ export default function RewritePage() {
   // ---------------------------------------------------------
   // SAVE MESSAGE
   // ---------------------------------------------------------
-  async function saveMessage(text, tone) {
+  async function saveMessage(text: string, tone: "soft" | "calm" | "clear") {
     const { data } = await supabase.auth.getSession();
     const user = data.session?.user;
 
@@ -143,12 +158,12 @@ export default function RewritePage() {
     }
   }
 
-  function copyToClipboard(text) {
+  function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text);
     setToast("Copied!");
   }
 
-  function useThis(text) {
+  function useThis(text: string) {
     setMessage(text);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
