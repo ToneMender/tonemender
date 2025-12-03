@@ -17,6 +17,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Validate session
     const { data: authData, error: authError } =
       await supabase.auth.getUser(token);
 
@@ -27,6 +28,42 @@ export async function POST(request: Request) {
       );
     }
 
+    const userId = authData.user.id;
+
+    // ---------------------------------------------------------
+    // 🔥 CHECK IF USER IS PRO
+    // ---------------------------------------------------------
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_pro")
+      .eq("id", userId)
+      .single();
+
+    const isPro = profile?.is_pro === true;
+
+    // ---------------------------------------------------------
+    // 🔥 FREE USER LIMIT (3 REWRITES PER DAY)
+    // ---------------------------------------------------------
+    if (!isPro) {
+      const today = new Date().toISOString().split("T")[0];
+
+      const { count } = await supabase
+        .from("rewrite_usage")
+        .select("id", { count: "exact" })
+        .eq("user_id", userId)
+        .gte("created_at", today);
+
+      if ((count ?? 0) >= 3) {
+        return NextResponse.json(
+          { error: "Daily limit reached" },
+          { status: 429 }
+        );
+      }
+    }
+
+    // ---------------------------------------------------------
+    // 🔥 RUN THE AI REWRITE
+    // ---------------------------------------------------------
     const prompt = `
 Rewrite the following message into 3 versions for a ${recipient}:
 
@@ -56,13 +93,22 @@ CLEAR: <clear>
       return match ? match[1].trim() : "";
     };
 
-    return NextResponse.json({
+    const result = {
       soft: extractBlock("SOFT"),
       calm: extractBlock("CALM"),
       clear: extractBlock("CLEAR"),
+    };
+
+    // ---------------------------------------------------------
+    // 🔥 LOG REWRITE USAGE (FREE USERS ONLY)
+    // ---------------------------------------------------------
+    await supabase.from("rewrite_usage").insert({
+      user_id: userId,
     });
+
+    return NextResponse.json(result);
   } catch (err: any) {
-    console.error(err);
+    console.error("REWRITE ERROR:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
