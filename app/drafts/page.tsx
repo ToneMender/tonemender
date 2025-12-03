@@ -2,31 +2,37 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { useRouter } from "next/navigation";
 
 export default function DraftsPage() {
+  const router = useRouter();
   const [drafts, setDrafts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadDrafts();
-  }, []);
+    async function load() {
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
 
-  async function loadDrafts() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace("/sign-in");
+        return;
+      }
 
-    if (!user) return;
+      const { data: messages } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
-    const { data, error } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (!error && data) {
-      setDrafts(data);
+      setDrafts(messages || []);
+      setLoading(false);
     }
-  }
+
+    load();
+  }, [router]);
+
+  if (loading) return <p className="p-6">Loading drafts…</p>;
 
   return (
     <main className="p-6">
@@ -40,7 +46,7 @@ export default function DraftsPage() {
         {drafts.map((d) => (
           <div key={d.id} className="border p-4 rounded bg-white shadow">
             <p className="text-sm text-gray-400">{d.created_at}</p>
-            <p className="mt-2"><strong>Original:</strong> {d.message}</p>
+            <p className="mt-2"><strong>Original:</strong> {d.original}</p>
             <p className="mt-2"><strong>Soft:</strong> {d.soft}</p>
             <p className="mt-2"><strong>Calm:</strong> {d.calm}</p>
             <p className="mt-2"><strong>Clear:</strong> {d.clear}</p>

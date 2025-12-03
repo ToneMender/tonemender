@@ -27,10 +27,8 @@ export default function LoginPage() {
       return;
     }
 
-    // Give Supabase time to save session
-    setTimeout(() => {
-      router.replace("/");
-    }, 300);
+    // Allow session to finish saving
+    setTimeout(() => router.replace("/"), 300);
   }
 
   return (
@@ -41,28 +39,9 @@ export default function LoginPage() {
         {error && <p className="text-red-500">{error}</p>}
 
         <form onSubmit={handleLogin} className="flex flex-col gap-3">
-          <input
-            type="email"
-            placeholder="Email"
-            className="border p-2 rounded"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-
-          <input
-            type="password"
-            placeholder="Password"
-            className="border p-2 rounded"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-
-          <button
-            disabled={loading}
-            className="bg-blue-600 text-white p-2 rounded"
-          >
+          <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="Email" className="border p-2 rounded" />
+          <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="Password" className="border p-2 rounded" />
+          <button disabled={loading} className="bg-blue-600 text-white p-2 rounded">
             {loading ? "Logging in..." : "Login"}
           </button>
         </form>
