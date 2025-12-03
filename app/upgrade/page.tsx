@@ -1,115 +1,127 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
+import { useRouter } from "next/navigation";
 
 export default function UpgradePage() {
   const router = useRouter();
-  const [checking, setChecking] = useState(true);
-  const [loading, setLoading] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true); // while checking auth + pro status
+  const [error, setError] = useState("");
 
-  // 🔐 Only logged-in users can see this page
   useEffect(() => {
-    async function checkAuth() {
-      const { data } = await supabase.auth.getSession();
-      const user = data.session?.user;
+    async function check() {
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
 
+      // Not logged in → go to sign-in
       if (!user) {
-        router.replace("/sign-in?error=not-authenticated");
+        router.replace("/sign-in");
         return;
       }
 
-      setChecking(false);
+      // Check if already Pro
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("is_pro")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.is_pro) {
+        // Pro users should NOT see this page at all
+        router.replace("/");
+        return;
+      }
+
+      setLoading(false);
     }
 
-    checkAuth();
+    check();
   }, [router]);
 
-  async function subscribe(type: "monthly" | "yearly") {
-    setLoading(type);
+  async function startCheckout(type: "monthly" | "yearly") {
+    setError("");
 
-    try {
-      // Get current session + token
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
 
-      if (!token) {
-        setLoading(null);
-        router.replace("/sign-in?error=not-authenticated");
-        return;
-      }
-
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, token }),
-      });
-
-      const dataJson = await res.json();
-
-      if (!res.ok) {
-        alert(dataJson.error || "Upgrade failed.");
-        setLoading(null);
-        return;
-      }
-
-      // Redirect to Stripe
-      window.location.href = dataJson.url;
-    } catch (err) {
-      console.error("SUBSCRIBE ERROR:", err);
-      alert("Network error. Try again.");
-      setLoading(null);
+    if (!token) {
+      setError("You must be logged in to upgrade.");
+      return;
     }
+
+    const res = await fetch("/api/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, token }),
+    });
+
+    const json = await res.json();
+
+    if (!res.ok || !json.url) {
+      setError(json.error || "Could not start checkout.");
+      return;
+    }
+
+    window.location.href = json.url;
   }
 
-  if (checking) {
+  if (loading) {
     return (
       <main className="p-6 text-center">
-        Checking authentication…
+        Checking your account…
       </main>
     );
   }
 
   return (
     <main className="max-w-xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-4">Upgrade to ToneMender Pro</h1>
-
-      <p className="mb-6 text-gray-700">
-        Unlock unlimited rewrites, unlimited saved drafts, and Pro-only features.
-      </p>
-
-      <div className="space-y-4">
-        {/* MONTHLY */}
-        <button
-          onClick={() => subscribe("monthly")}
-          className="bg-blue-600 text-white px-4 py-3 rounded w-full text-left"
-          disabled={loading !== null}
-        >
-          {loading === "monthly"
-            ? "Redirecting..."
-            : "Subscribe Monthly — $7.99 / month"}
-        </button>
-
-        {/* YEARLY */}
-        <button
-          onClick={() => subscribe("yearly")}
-          className="bg-green-600 text-white px-4 py-3 rounded w-full text-left"
-          disabled={loading !== null}
-        >
-          {loading === "yearly"
-            ? "Redirecting..."
-            : "Subscribe Yearly — $49.99 / year"}
-        </button>
-      </div>
-
-      {/* BACK BUTTON */}
+      {/* Back button */}
       <button
-        className="mt-6 text-blue-600 underline"
         onClick={() => router.push("/")}
+        className="mb-4 text-blue-600 underline"
       >
         ← Back to Home
       </button>
+
+      <h1 className="text-3xl font-bold mb-4">Upgrade to ToneMender Pro</h1>
+
+      <p className="mb-4 text-gray-700">
+        Unlock unlimited rewrites, priority processing, and access to all future
+        premium features.
+      </p>
+
+      {error && <p className="mb-3 text-red-500">{error}</p>}
+
+      <div className="grid gap-4 md:grid-cols-2 mt-4">
+        {/* Monthly plan */}
+        <div className="border rounded p-4 bg-white shadow-sm">
+          <h2 className="text-xl font-semibold mb-2">Monthly</h2>
+          <p className="text-2xl font-bold mb-1">$7.99</p>
+          <p className="text-sm text-gray-600 mb-4">Billed every month.</p>
+          <button
+            onClick={() => startCheckout("monthly")}
+            className="w-full bg-blue-600 text-white py-2 rounded"
+          >
+            Subscribe Monthly
+          </button>
+        </div>
+
+        {/* Yearly plan */}
+        <div className="border rounded p-4 bg-white shadow-sm">
+          <h2 className="text-xl font-semibold mb-2">Yearly</h2>
+          <p className="text-2xl font-bold mb-1">$49.99</p>
+          <p className="text-sm text-gray-600 mb-4">
+            Billed once per year. Save big vs monthly.
+          </p>
+          <button
+            onClick={() => startCheckout("yearly")}
+            className="w-full bg-green-600 text-white py-2 rounded"
+          >
+            Subscribe Yearly
+          </button>
+        </div>
+      </div>
     </main>
   );
 }
