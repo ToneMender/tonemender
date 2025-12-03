@@ -6,15 +6,15 @@ import LogoutButton from "./components/LogoutButton";
 import Link from "next/link";
 
 export default function LandingPage() {
+  const [authReady, setAuthReady] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [isPro, setIsPro] = useState(false);
-  const [authReady, setAuthReady] = useState(false); // ← NEW
 
   useEffect(() => {
     async function load() {
       const { data } = await supabase.auth.getUser();
-
       const user = data.user;
+
       setLoggedIn(!!user);
 
       if (user) {
@@ -24,26 +24,21 @@ export default function LandingPage() {
           .eq("id", user.id)
           .single();
 
-        if (profile?.is_pro) setIsPro(true);
+        setIsPro(profile?.is_pro || false);
       }
 
-      setAuthReady(true); // ← WE WAIT UNTIL EVERYTHING IS LOADED
+      setAuthReady(true);
     }
 
     load();
   }, []);
 
-  // Don’t render UI depending on login state until session is loaded
-  if (!authReady) {
-    return (
-      <main className="p-8 text-center">
-        Loading...
-      </main>
-    );
-  }
+  // ⏳ Avoid flicker — show nothing until auth is loaded
+  if (!authReady) return null;
 
   return (
     <main style={{ padding: "40px", maxWidth: "600px", margin: "auto" }}>
+      {/* Show logout only when logged in */}
       {loggedIn && (
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <LogoutButton />
@@ -57,63 +52,7 @@ export default function LandingPage() {
         relationship-safe communication.
       </p>
 
-      <div style={{ marginTop: "40px", display: "flex", gap: "16px" }}>
-        <Link
-          href="/rewrite"
-          style={{
-            padding: "10px 16px",
-            background: "#2563eb",
-            color: "white",
-            borderRadius: "6px",
-          }}
-        >
-          Rewrite Message
-        </Link>
-
-        <Link
-          href="/drafts"
-          style={{
-            padding: "10px 16px",
-            background: "#6b7280",
-            color: "white",
-            borderRadius: "6px",
-          }}
-        >
-          Drafts
-        </Link>
-
-        <Link
-          href="/account"
-          style={{
-            padding: "10px 16px",
-            background: "#4f46e5",
-            color: "white",
-            borderRadius: "6px",
-          }}
-        >
-          Account
-        </Link>
-      </div>
-
-      {/* Show Upgrade button ONLY if logged in AND not Pro */}
-      {loggedIn && !isPro && (
-        <div style={{ marginTop: "30px" }}>
-          <Link
-            href="/upgrade"
-            style={{
-              padding: "10px 16px",
-              background: "#10b981",
-              color: "white",
-              borderRadius: "6px",
-              textDecoration: "none",
-            }}
-          >
-            Upgrade to Pro
-          </Link>
-        </div>
-      )}
-
-      {/* Show login/signup only if logged OUT */}
+      {/* 🚫 Logged OUT → only show Sign In / Sign Up */}
       {!loggedIn && (
         <div style={{ marginTop: "40px" }}>
           <Link
@@ -141,6 +80,67 @@ export default function LandingPage() {
             Sign Up
           </Link>
         </div>
+      )}
+
+      {/* ✅ Logged IN → show app navigation */}
+      {loggedIn && (
+        <>
+          <div style={{ marginTop: "40px", display: "flex", gap: "16px" }}>
+            <Link
+              href="/rewrite"
+              style={{
+                padding: "10px 16px",
+                background: "#2563eb",
+                color: "white",
+                borderRadius: "6px",
+              }}
+            >
+              Rewrite Message
+            </Link>
+
+            <Link
+              href="/drafts"
+              style={{
+                padding: "10px 16px",
+                background: "#6b7280",
+                color: "white",
+                borderRadius: "6px",
+              }}
+            >
+              Drafts
+            </Link>
+
+            <Link
+              href="/account"
+              style={{
+                padding: "10px 16px",
+                background: "#4f46e5",
+                color: "white",
+                borderRadius: "6px",
+              }}
+            >
+              Account
+            </Link>
+          </div>
+
+          {/* Only show Upgrade if NOT Pro */}
+          {!isPro && (
+            <div style={{ marginTop: "30px" }}>
+              <Link
+                href="/upgrade"
+                style={{
+                  padding: "10px 16px",
+                  background: "#10b981",
+                  color: "white",
+                  borderRadius: "6px",
+                  textDecoration: "none",
+                }}
+              >
+                Upgrade to Pro
+              </Link>
+            </div>
+          )}
+        </>
       )}
     </main>
   );
