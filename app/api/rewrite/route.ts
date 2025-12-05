@@ -111,7 +111,7 @@ export async function POST(request: Request) {
       return "";
     })();
 
-    // -------- PERFORM AI REWRITE (IMPROVED PROMPT) --------
+    // -------- PERFORM AI REWRITE (IMPROVED PROMPT + SCORE + EMOTION) --------
     const prompt = `
 You are an expert relationship and communication coach. Your job is to rewrite emotionally charged messages so they are safe, clear and honest, without losing the original point.
 
@@ -140,12 +140,20 @@ CLEAR:
 - Avoids insults, name-calling, and threats.
 - Good when the user needs to be firm without being cruel.
 
+You will ALSO:
+1) Give a TONE_SCORE from 0–100 for the ORIGINAL message, where:
+   - 0 = extremely harsh / attacking
+   - 100 = extremely calm, kind and safe
+2) Briefly describe how the ORIGINAL message is likely to make the other person feel (EMOTION_PREDICTION), in 1 short sentence (for example: "They may feel blamed and defensive.").
+
 IMPORTANT RULES:
-- Keep the original intent and meaning of the user’s message, but remove blamey wording, swearing, or insults.
+- Keep the original intent and meaning of the user’s message, but remove blamey wording, swearing, or insults in the rewrites.
 - NEVER add fake details or change the situation.
 - Do NOT mention that you are an AI or that this is a rewrite.
 - Do NOT include headers, bullet points, or explanations outside of the required format.
 - Each version should sound like a natural text message someone would actually send.
+- TONE_SCORE must be a single integer from 0 to 100.
+- EMOTION_PREDICTION must be one short plain sentence.
 
 Here is the original message:
 
@@ -156,6 +164,8 @@ Return your answer in EXACTLY this format with no extra text before or after:
 SOFT: <soft version as a single or multi-sentence message>
 CALM: <calm version as a single or multi-sentence message>
 CLEAR: <clear version as a single or multi-sentence message>
+TONE_SCORE: <integer from 0 to 100 for the ORIGINAL message>
+EMOTION_PREDICTION: <one short sentence about how the ORIGINAL message may make them feel>
 `.trim();
 
     const completion = await client.chat.completions.create({
@@ -167,7 +177,7 @@ CLEAR: <clear version as a single or multi-sentence message>
     const raw = (completion.choices[0].message.content ?? "").trim();
 
     const extract = (label: string) => {
-      const regex = new RegExp(`${label}:([\\s\\S]*?)(?=\\n[A-Z]+:|$)`, "i");
+      const regex = new RegExp(`${label}:([\\s\\S]*?)(?=\\n[A-Z_]+:|$)`, "i");
       const match = raw.match(regex);
       return match ? match[1].trim() : "";
     };
@@ -175,6 +185,18 @@ CLEAR: <clear version as a single or multi-sentence message>
     const soft = extract("SOFT");
     const calm = extract("CALM");
     const clear = extract("CLEAR");
+
+    const toneScoreRaw = extract("TONE_SCORE");
+    let toneScore: number | null = null;
+    const scoreMatch = toneScoreRaw.match(/\d+/);
+    if (scoreMatch) {
+      const parsed = parseInt(scoreMatch[0], 10);
+      if (!Number.isNaN(parsed) && parsed >= 0 && parsed <= 100) {
+        toneScore = parsed;
+      }
+    }
+
+    const emotionPrediction = extract("EMOTION_PREDICTION");
 
     // -------- LOG REWRITE USAGE --------
     await supabaseServer.from("rewrite_usage").insert({
@@ -191,7 +213,13 @@ CLEAR: <clear version as a single or multi-sentence message>
         .eq("id", user.id);
     }
 
-    return NextResponse.json({ soft, calm, clear });
+    return NextResponse.json({
+      soft,
+      calm,
+      clear,
+      toneScore,
+      emotionPrediction,
+    });
   } catch (err: any) {
     console.error("REWRITE ERROR:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
