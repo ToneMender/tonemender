@@ -12,13 +12,14 @@ export default function RewritePage() {
   const [ready, setReady] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
 
+  // ⭐ NEW: track PRO status
+  const [isPro, setIsPro] = useState(false);
+
   // Rewrite state
   const [message, setMessage] = useState("");
 
-  // ⭐ CHANGED: no default selection
-  const [recipient, setRecipient] = useState("");  
-
-  // ⭐ CHANGED: no default selection
+  // Dropdowns start empty
+  const [recipient, setRecipient] = useState("");
   const [tone, setTone] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -32,7 +33,7 @@ export default function RewritePage() {
   const [toast, setToast] = useState("");
 
   // ---------------------------------------------------------
-  // AUTH CHECK
+  // AUTH CHECK + FETCH PRO STATUS
   // ---------------------------------------------------------
   useEffect(() => {
     let mounted = true;
@@ -45,6 +46,18 @@ export default function RewritePage() {
       if (data.session) {
         setLoggedIn(true);
         setReady(true);
+
+        const user = data.session.user;
+
+        // ⭐ NEW: Fetch is_pro
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("is_pro")
+          .eq("id", user.id)
+          .single();
+
+        setIsPro(profile?.is_pro === true);
+
         return;
       }
 
@@ -56,6 +69,17 @@ export default function RewritePage() {
         if (retry.session) {
           setLoggedIn(true);
           setReady(true);
+
+          const user = retry.session.user;
+
+          // ⭐ NEW: Fetch is_pro
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("is_pro")
+            .eq("id", user.id)
+            .single();
+
+          setIsPro(profile?.is_pro === true);
         } else {
           router.replace("/sign-in");
         }
@@ -101,10 +125,19 @@ export default function RewritePage() {
         return;
       }
 
+      // ⭐ NEW: For free users, force "default" options
+      const finalRecipient = isPro ? recipient : "default";
+      const finalTone = isPro ? tone : "default";
+
       const res = await fetch("/api/rewrite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, message, recipient, tone }), // uses tone
+        body: JSON.stringify({
+          token,
+          message,
+          recipient: finalRecipient,
+          tone: finalTone,
+        }),
       });
 
       const json = await res.json();
@@ -134,8 +167,18 @@ export default function RewritePage() {
   }
 
   // ---------------------------------------------------------
-  // SAVE MESSAGE (unchanged)
+  // SAVE, COPY, USE (UNCHANGED)
   // ---------------------------------------------------------
+  function copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text);
+    setToast("Copied!");
+  }
+
+  function useThis(text: string) {
+    setMessage(text);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   async function saveMessage(text: string, tone: "soft" | "calm" | "clear") {
     const { data } = await supabase.auth.getSession();
     const user = data.session?.user;
@@ -166,19 +209,6 @@ export default function RewritePage() {
   }
 
   // ---------------------------------------------------------
-  // BUTTON HELPERS
-  // ---------------------------------------------------------
-  function copyToClipboard(text: string) {
-    navigator.clipboard.writeText(text);
-    setToast("Copied!");
-  }
-
-  function useThis(text: string) {
-    setMessage(text);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  // ---------------------------------------------------------
   // UI
   // ---------------------------------------------------------
   return (
@@ -198,7 +228,7 @@ export default function RewritePage() {
             You’ve used all 3 free rewrites for today.
           </p>
           <p className="mb-2 text-sm">
-            Upgrade to ToneMender Pro to unlock unlimited rewrites.
+            Upgrade to ToneMender Pro to unlock tone control, relationship types, and unlimited rewrites.
           </p>
           <a
             href="/upgrade"
@@ -218,14 +248,15 @@ export default function RewritePage() {
         onChange={(e) => setMessage(e.target.value)}
       />
 
-      {/* ⭐ CHANGED: Relationship dropdown now has a placeholder */}
+      {/* ⭐ NEW: Relationship dropdown disabled for free users */}
       <select
         className="border p-2 rounded mt-3 w-full"
         value={recipient}
         onChange={(e) => setRecipient(e.target.value)}
+        disabled={!isPro}
       >
         <option value="" disabled>
-          Select Relationship Type
+          {isPro ? "Select Relationship Type" : "Pro Required: Relationship Type Locked"}
         </option>
         <option value="partner">Romantic Partner</option>
         <option value="friend">Friend</option>
@@ -233,56 +264,64 @@ export default function RewritePage() {
         <option value="coworker">Coworker</option>
       </select>
 
-      {/* ⭐ CHANGED: Tone dropdown now has a placeholder */}
+      {/* ⭐ NEW: Tone dropdown disabled for free users */}
       <select
         className="border p-2 rounded mt-3 w-full"
         value={tone}
         onChange={(e) => setTone(e.target.value)}
+        disabled={!isPro}
       >
         <option value="" disabled>
-          Select Tone Type
+          {isPro ? "Select Tone Type" : "Pro Required: Tone Type Locked"}
         </option>
         <option value="soft">Soft & Gentle</option>
         <option value="calm">Calm & Neutral</option>
         <option value="clear">Clear & Direct</option>
       </select>
 
-      {/* ⭐ CHANGED: Button is disabled unless tone + relationship selected */}
+      {/* ⭐ NEW: Free users do NOT need recipient/tone selected */}
       <button
         onClick={handleRewrite}
-        disabled={loading || !message || !recipient || !tone}
+        disabled={loading || !message || (isPro && (!recipient || !tone))}
         className="bg-blue-600 text-white w-full p-3 mt-4 rounded disabled:bg-gray-400"
       >
         {loading ? "Processing…" : "Rewrite Message"}
       </button>
 
-      {/* Only display the chosen tone */}
-      {results[tone] && (
+      {/* Show only selected tone OR soft for default */}
+      {results[isPro ? tone : "soft"] && (
         <div className="mt-8 space-y-6">
           <div className="border p-4 rounded-lg bg-gray-50">
             <h2 className="text-xl font-semibold capitalize text-blue-700 mb-2">
-              {tone} Version
+              {isPro ? tone : "soft"} Version
             </h2>
 
-            <p className="whitespace-pre-wrap">{results[tone]}</p>
+            <p className="whitespace-pre-wrap">
+              {results[isPro ? tone : "soft"]}
+            </p>
 
             <div className="flex gap-3 mt-4">
               <button
-                onClick={() => copyToClipboard(results[tone])}
+                onClick={() => copyToClipboard(results[isPro ? tone : "soft"])}
                 className="border px-3 py-1 rounded"
               >
                 Copy
               </button>
 
               <button
-                onClick={() => useThis(results[tone])}
+                onClick={() => useThis(results[isPro ? tone : "soft"])}
                 className="border px-3 py-1 rounded"
               >
                 Use This
               </button>
 
               <button
-                onClick={() => saveMessage(results[tone], tone as any)}
+                onClick={() =>
+                  saveMessage(
+                    results[isPro ? tone : "soft"],
+                    (isPro ? tone : "soft") as any
+                  )
+                }
                 className="border px-3 py-1 rounded bg-green-600 text-white"
               >
                 Save
