@@ -15,6 +15,10 @@ export default function RewritePage() {
   // Rewrite state
   const [message, setMessage] = useState("");
   const [recipient, setRecipient] = useState("partner");
+
+  // ⭐ NEW: Tone Selector state
+  const [tone, setTone] = useState("soft");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [limitReached, setLimitReached] = useState(false);
@@ -36,14 +40,12 @@ export default function RewritePage() {
 
       if (!mounted) return;
 
-      // If session instantly available
       if (data.session) {
         setLoggedIn(true);
         setReady(true);
         return;
       }
 
-      // Retry after short wait (Supabase restoring session)
       setTimeout(async () => {
         const { data: retry } = await supabase.auth.getSession();
 
@@ -60,7 +62,6 @@ export default function RewritePage() {
 
     checkSession();
 
-    // Listen for login/logout
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setLoggedIn(!!session);
@@ -85,6 +86,8 @@ export default function RewritePage() {
   async function handleRewrite() {
     setError("");
     setLimitReached(false);
+
+    // ⭐ Still clear all results — but we'll *only display* selected tone
     setResults({ soft: "", calm: "", clear: "" });
     setLoading(true);
 
@@ -101,7 +104,7 @@ export default function RewritePage() {
       const res = await fetch("/api/rewrite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, message, recipient }),
+        body: JSON.stringify({ token, message, recipient, tone }),  // ⭐ NEW
       });
 
       const json = await res.json();
@@ -131,7 +134,7 @@ export default function RewritePage() {
   }
 
   // ---------------------------------------------------------
-  // SAVE MESSAGE (FIXED COLUMN NAMES)
+  // SAVE MESSAGE (unchanged)
   // ---------------------------------------------------------
   async function saveMessage(text: string, tone: "soft" | "calm" | "clear") {
     const { data } = await supabase.auth.getSession();
@@ -180,7 +183,6 @@ export default function RewritePage() {
   // ---------------------------------------------------------
   return (
     <main className="max-w-2xl mx-auto p-5">
-      {/* BACK BUTTON */}
       <button
         onClick={() => router.push("/")}
         className="mb-4 text-blue-600 underline"
@@ -227,6 +229,17 @@ export default function RewritePage() {
         <option value="coworker">Coworker</option>
       </select>
 
+      {/* ⭐ NEW: TONE SELECTOR UI */}
+      <select
+        className="border p-2 rounded mt-3 w-full"
+        value={tone}
+        onChange={(e) => setTone(e.target.value)}
+      >
+        <option value="soft">Soft & Gentle</option>
+        <option value="calm">Calm & Neutral</option>
+        <option value="clear">Clear & Direct</option>
+      </select>
+
       <button
         onClick={handleRewrite}
         disabled={loading || !message}
@@ -235,40 +248,39 @@ export default function RewritePage() {
         {loading ? "Processing…" : "Rewrite Message"}
       </button>
 
-      {results.soft && (
+      {/* ⭐ NEW: Only display the selected tone */}
+      {results[tone] && (
         <div className="mt-8 space-y-6">
-          {(["soft", "calm", "clear"] as const).map((toneKey) => (
-            <div key={toneKey} className="border p-4 rounded-lg bg-gray-50">
-              <h2 className="text-xl font-semibold capitalize text-blue-700 mb-2">
-                {toneKey} Version
-              </h2>
+          <div className="border p-4 rounded-lg bg-gray-50">
+            <h2 className="text-xl font-semibold capitalize text-blue-700 mb-2">
+              {tone} Version
+            </h2>
 
-              <p className="whitespace-pre-wrap">{results[toneKey]}</p>
+            <p className="whitespace-pre-wrap">{results[tone]}</p>
 
-              <div className="flex gap-3 mt-4">
-                <button
-                  onClick={() => copyToClipboard(results[toneKey])}
-                  className="border px-3 py-1 rounded"
-                >
-                  Copy
-                </button>
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => copyToClipboard(results[tone])}
+                className="border px-3 py-1 rounded"
+              >
+                Copy
+              </button>
 
-                <button
-                  onClick={() => useThis(results[toneKey])}
-                  className="border px-3 py-1 rounded"
-                >
-                  Use This
-                </button>
+              <button
+                onClick={() => useThis(results[tone])}
+                className="border px-3 py-1 rounded"
+              >
+                Use This
+              </button>
 
-                <button
-                  onClick={() => saveMessage(results[toneKey], toneKey)}
-                  className="border px-3 py-1 rounded bg-green-600 text-white"
-                >
-                  Save
-                </button>
-              </div>
+              <button
+                onClick={() => saveMessage(results[tone], tone as any)}
+                className="border px-3 py-1 rounded bg-green-600 text-white"
+              >
+                Save
+              </button>
             </div>
-          ))}
+          </div>
         </div>
       )}
 
