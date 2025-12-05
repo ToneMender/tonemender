@@ -15,12 +15,19 @@ const client = new OpenAI({
 
 export async function POST(request: Request) {
   try {
-    const { token, message, recipient } = await request.json();
+    const { token, message, recipient, tone } = await request.json();
 
     if (!token) {
       return NextResponse.json(
         { error: "Missing auth token" },
         { status: 401 }
+      );
+    }
+
+    if (!message || typeof message !== "string" || message.trim().length === 0) {
+      return NextResponse.json(
+        { error: "Message is required" },
+        { status: 400 }
       );
     }
 
@@ -39,15 +46,15 @@ export async function POST(request: Request) {
 
     const user = auth.user;
 
-    // -------- CHECK PRO STATUS --------
+    // -------- CHECK PRO STATUS + FREE LIMIT INFO --------
     const { data: profile } = await supabaseServer
       .from("profiles")
-      .select("is_pro, free_rewrites_remaining, last_reset_date") // ⭐ NEW
+      .select("is_pro, free_rewrites_remaining, last_reset_date")
       .eq("id", user.id)
       .single();
 
     // -------- MIDNIGHT RESET CHECK (LOCAL DAILY RESET) --------
-    if (!profile?.is_pro) {
+    if (profile && !profile.is_pro) {
       const today = new Date().toISOString().split("T")[0];
 
       // If last reset was NOT today → reset counter
@@ -55,11 +62,12 @@ export async function POST(request: Request) {
         await supabaseServer
           .from("profiles")
           .update({
-            free_rewrites_remaining: 3,   // ⭐ NEW
-            last_reset_date: today,       // ⭐ NEW
+            free_rewrites_remaining: 3,
+            last_reset_date: today,
           })
           .eq("id", user.id);
-        profile.free_rewrites_remaining = 3;  // ⭐ update local value
+
+        profile.free_rewrites_remaining = 3;
       }
 
       // -------- DAILY LIMIT ENFORCEMENT --------
@@ -71,29 +79,92 @@ export async function POST(request: Request) {
       }
     }
 
-    // -------- PERFORM AI REWRITE --------
+    // -------- CONTEXT MAPPING --------
+    const trimmedMessage = message.trim();
+
+    const recipientDescription = (() => {
+      switch (recipient) {
+        case "partner":
+          return "a romantic partner you care about and want to keep a healthy, vulnerable connection with";
+        case "friend":
+          return "a friend you want to stay close with while being honest";
+        case "family":
+          return "a family member where you want less drama and more understanding";
+        case "coworker":
+          return "a coworker or manager where you need to stay professional but honest";
+        default:
+          return "someone you care about and want to communicate with in a healthy, respectful way";
+      }
+    })();
+
+    const primaryToneHint = (() => {
+      if (!tone || tone === "default") return "";
+      if (tone === "soft") {
+        return "The user’s primary preference is SOFT. Make that version especially gentle, reassuring and emotionally safe while keeping boundaries.";
+      }
+      if (tone === "calm") {
+        return "The user’s primary preference is CALM. Make that version especially neutral, steady and balanced, without sounding cold.";
+      }
+      if (tone === "clear") {
+        return "The user’s primary preference is CLEAR. Make that version especially direct and honest, but still respectful and not attacking.";
+      }
+      return "";
+    })();
+
+    // -------- PERFORM AI REWRITE (IMPROVED PROMPT) --------
     const prompt = `
-Rewrite the following message into 3 versions for a ${recipient}:
+You are an expert relationship and communication coach. Your job is to rewrite emotionally charged messages so they are safe, clear and honest, without losing the original point.
+
+User context:
+- They are sending this to ${recipientDescription}.
+- The goal is to reduce conflict, avoid blame, and increase understanding while still expressing how they feel.
+${primaryToneHint}
+
+You will create THREE versions of the message using these exact tone definitions:
 
 SOFT:
+- Very gentle and compassionate.
+- Uses "I" statements, empathy, and softness.
+- De-escalates tension and reassures the other person.
+- Good when the situation is sensitive and the user wants to avoid conflict.
+
 CALM:
+- Neutral and steady.
+- Clear but not sharp.
+- Removes drama, accusations, and exaggeration.
+- Good for day-to-day misunderstandings or when the user wants to sound mature.
+
 CLEAR:
+- Direct and straightforward, but still respectful.
+- States needs, boundaries, or problems plainly.
+- Avoids insults, name-calling, and threats.
+- Good when the user needs to be firm without being cruel.
 
-Message: "${message}"
+IMPORTANT RULES:
+- Keep the original intent and meaning of the user’s message, but remove blamey wording, swearing, or insults.
+- NEVER add fake details or change the situation.
+- Do NOT mention that you are an AI or that this is a rewrite.
+- Do NOT include headers, bullet points, or explanations outside of the required format.
+- Each version should sound like a natural text message someone would actually send.
 
-Return EXACTLY:
+Here is the original message:
 
-SOFT: <soft>
-CALM: <calm>
-CLEAR: <clear>
-`;
+"${trimmedMessage}"
+
+Return your answer in EXACTLY this format with no extra text before or after:
+
+SOFT: <soft version as a single or multi-sentence message>
+CALM: <calm version as a single or multi-sentence message>
+CLEAR: <clear version as a single or multi-sentence message>
+`.trim();
 
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
     });
 
-    const raw = completion.choices[0].message.content ?? "";
+    const raw = (completion.choices[0].message.content ?? "").trim();
 
     const extract = (label: string) => {
       const regex = new RegExp(`${label}:([\\s\\S]*?)(?=\\n[A-Z]+:|$)`, "i");
@@ -110,8 +181,8 @@ CLEAR: <clear>
       user_id: user.id,
     });
 
-    // ⭐ NEW: decrement free rewrite count only for non-pro users
-    if (!profile?.is_pro) {
+    // Decrement free rewrite count only for non-pro users WITH a profile
+    if (profile && !profile.is_pro) {
       await supabaseServer
         .from("profiles")
         .update({

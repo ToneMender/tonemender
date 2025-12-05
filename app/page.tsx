@@ -48,8 +48,15 @@ export default function LandingPage() {
       <h1 style={{ fontSize: "36px", fontWeight: "bold" }}>ToneMender</h1>
 
       <p style={{ marginTop: "20px", fontSize: "18px", lineHeight: "1.6" }}>
-        ToneMender transforms emotionally charged messages into healthy,
-        relationship-safe communication.
+        ToneMender transforms emotionally charged messages into calm, clear,
+        relationship-safe communication — so you can say what you mean without
+        starting a fight.
+      </p>
+
+      <p style={{ marginTop: "12px", fontSize: "14px", lineHeight: "1.6", color: "#4b5563" }}>
+        Paste the text you&apos;re worried about sending, choose how you want
+        to sound, and get a version that feels honest but safe for partners,
+        friends, family, or coworkers.
       </p>
 
       {/* 🚫 Logged OUT → only show Sign In / Sign Up */}

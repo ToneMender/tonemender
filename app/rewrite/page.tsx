@@ -127,6 +127,14 @@ export default function RewritePage() {
         return;
       }
 
+      const trimmedMessage = message.trim();
+
+      if (!trimmedMessage) {
+        setError("Please paste a message to rewrite.");
+        setLoading(false);
+        return;
+      }
+
       // For free users, force "default" options
       const finalRecipient = isPro ? recipient : "default";
       const finalTone = isPro ? tone : "default";
@@ -136,7 +144,7 @@ export default function RewritePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
-          message,
+          message: trimmedMessage,
           recipient: finalRecipient,
           tone: finalTone,
         }),
@@ -157,15 +165,15 @@ export default function RewritePage() {
       }
 
       const newResults = {
-        soft: json.soft || "",
-        calm: json.calm || "",
-        clear: json.clear || "",
+        soft: (json.soft || "").trim(),
+        calm: (json.calm || "").trim(),
+        clear: (json.clear || "").trim(),
       };
 
       setResults(newResults);
 
       // Store Before/After snapshot for share card
-      const chosenToneKey = isPro ? (tone || "soft") : "soft";
+      const chosenToneKey = isPro ? (finalTone === "default" ? "soft" : finalTone) : "soft";
       const chosenText =
         (newResults as any)[chosenToneKey] ||
         newResults.soft ||
@@ -173,7 +181,7 @@ export default function RewritePage() {
         newResults.clear ||
         "";
 
-      setOriginalForCard(message);
+      setOriginalForCard(trimmedMessage);
       setRewrittenForCard(chosenText);
     } catch {
       setError("Network error. Try again.");
@@ -186,11 +194,16 @@ export default function RewritePage() {
   // SAVE, COPY, USE
   // ---------------------------------------------------------
   function copyToClipboard(text: string) {
+    if (!text) {
+      setToast("Nothing to copy yet.");
+      return;
+    }
     navigator.clipboard.writeText(text);
     setToast("Copied!");
   }
 
   function useThis(text: string) {
+    if (!text) return;
     setMessage(text);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -247,7 +260,7 @@ export default function RewritePage() {
   }
 
   async function shareRewrite() {
-    const key = isPro ? tone : "soft";
+    const key = isPro ? tone || "soft" : "soft";
     const current = key ? (results as any)[key] : results.soft;
 
     if (!current) {
@@ -255,7 +268,7 @@ export default function RewritePage() {
       return;
     }
 
-    const shareText = `Before:\n${message}\n\nAfter:\n${current}\n\nWritten with ToneMender (https://tone13.vercel.app)`;
+    const shareText = `Before:\n${message.trim()}\n\nAfter:\n${current}\n\nWritten with ToneMender (https://tone13.vercel.app)`;
 
     try {
       if (navigator.share) {
@@ -317,9 +330,11 @@ export default function RewritePage() {
   // ---------------------------------------------------------
   // UI
   // ---------------------------------------------------------
-  const displayKey = isPro ? tone : "soft";
-  const displayText =
-    (displayKey && (results as any)[displayKey]) || results.soft;
+  const rawDisplayKey = isPro ? tone || "soft" : "soft";
+  const rawDisplayText =
+    (rawDisplayKey && (results as any)[rawDisplayKey]) || results.soft;
+  const displayKey = rawDisplayKey || "soft";
+  const displayText = (rawDisplayText || "").trim();
 
   return (
     <main className="max-w-2xl mx-auto p-5">
@@ -331,6 +346,10 @@ export default function RewritePage() {
       </button>
 
       <h1 className="text-3xl font-bold mb-2">Rewrite Your Message</h1>
+      <p className="text-sm text-gray-600 mb-4">
+        Paste the message you’re nervous to send. ToneMender keeps your point,
+        but removes the blame and heat so you don’t start a fight by accident.
+      </p>
 
       {/* Share app button */}
       <button
@@ -360,50 +379,75 @@ export default function RewritePage() {
 
       {error && <p className="text-red-500 mb-3">{error}</p>}
 
+      <label className="block mb-2 text-sm font-medium text-gray-700">
+        Your original message
+      </label>
       <textarea
         className="border p-3 w-full rounded min-h-[120px]"
-        placeholder="Paste your message..."
+        placeholder='Example: "I’m so tired of you ignoring my texts."'
         value={message}
         onChange={(e) => setMessage(e.target.value)}
       />
+      <p className="text-xs text-gray-500 mt-1">
+        Tip: Paste exactly what you were going to send — ToneMender will keep
+        your meaning but make it safer.
+      </p>
 
       {/* Relationship dropdown (Pro-only) */}
-      <select
-        className="border p-2 rounded mt-3 w-full"
-        value={recipient}
-        onChange={(e) => setRecipient(e.target.value)}
-        disabled={!isPro}
-      >
-        <option value="" disabled>
-          {isPro
-            ? "Select Relationship Type"
-            : "Pro Required: Relationship Type Locked"}
-        </option>
-        <option value="partner">Romantic Partner</option>
-        <option value="friend">Friend</option>
-        <option value="family">Family</option>
-        <option value="coworker">Coworker</option>
-      </select>
+      <div className="mt-4">
+        <label className="block mb-1 text-sm font-medium text-gray-700">
+          Who is this message for?
+        </label>
+        <select
+          className="border p-2 rounded w-full"
+          value={recipient}
+          onChange={(e) => setRecipient(e.target.value)}
+          disabled={!isPro}
+        >
+          <option value="" disabled>
+            {isPro
+              ? "Select Relationship Type"
+              : "Pro Required: Relationship Type Locked"}
+          </option>
+          <option value="partner">Romantic Partner</option>
+          <option value="friend">Friend</option>
+          <option value="family">Family</option>
+          <option value="coworker">Coworker</option>
+        </select>
+        <p className="text-xs text-gray-500 mt-1">
+          Pro users get rewrites tailored for partners, friends, family and
+          coworkers. Free users get a general safe rewrite.
+        </p>
+      </div>
 
       {/* Tone dropdown (Pro-only) */}
-      <select
-        className="border p-2 rounded mt-3 w-full"
-        value={tone}
-        onChange={(e) => setTone(e.target.value)}
-        disabled={!isPro}
-      >
-        <option value="" disabled>
-          {isPro ? "Select Tone Type" : "Pro Required: Tone Type Locked"}
-        </option>
-        <option value="soft">Soft & Gentle</option>
-        <option value="calm">Calm & Neutral</option>
-        <option value="clear">Clear & Direct</option>
-      </select>
+      <div className="mt-4">
+        <label className="block mb-1 text-sm font-medium text-gray-700">
+          How do you want to sound?
+        </label>
+        <select
+          className="border p-2 rounded w-full"
+          value={tone}
+          onChange={(e) => setTone(e.target.value)}
+          disabled={!isPro}
+        >
+          <option value="" disabled>
+            {isPro ? "Select Tone Type" : "Pro Required: Tone Type Locked"}
+          </option>
+          <option value="soft">Soft & Gentle</option>
+          <option value="calm">Calm & Neutral</option>
+          <option value="clear">Clear & Direct</option>
+        </select>
+        <p className="text-xs text-gray-500 mt-1">
+          SOFT is extra gentle, CALM is neutral and steady, CLEAR is more direct
+          but still respectful.
+        </p>
+      </div>
 
       {/* Free users do NOT need recipient/tone selected */}
       <button
         onClick={handleRewrite}
-        disabled={loading || !message || (isPro && (!recipient || !tone))}
+        disabled={loading || !message.trim() || (isPro && (!recipient || !tone))}
         className="bg-blue-600 text-white w-full p-3 mt-4 rounded disabled:bg-gray-400"
       >
         {loading ? "Processing…" : "Rewrite Message"}
@@ -447,7 +491,7 @@ export default function RewritePage() {
           {/* Visible result card */}
           <div className="border p-4 rounded-lg bg-gray-50">
             <h2 className="text-xl font-semibold capitalize text-blue-700 mb-2">
-              {isPro ? displayKey || "soft" : "soft"} Version
+              {isPro ? displayKey : "soft"} Version
             </h2>
 
             <p className="whitespace-pre-wrap">{displayText}</p>
@@ -471,7 +515,7 @@ export default function RewritePage() {
                 onClick={() =>
                   saveMessage(
                     displayText,
-                    (isPro ? (displayKey || "soft") : "soft") as any
+                    (isPro ? displayKey : "soft") as any
                   )
                 }
                 className="border px-3 py-1 rounded bg-green-600 text-white"
