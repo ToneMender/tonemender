@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import PageTransition from "./components/PageTransition";
 
 export const metadata: Metadata = {
   title: "ToneMender",
@@ -32,10 +33,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-100 text-slate-900 antialiased">
-        <div className="min-h-screen flex items-start justify-center px-4 sm:px-0 py-8">
-          {children}
-        </div>
+      <body style={{ overflowX: "hidden", position: "relative" }}>
+        <PageTransition>{children}</PageTransition>
       </body>
     </html>
   );

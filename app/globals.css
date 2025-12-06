@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+.fade-scale-in {
+  animation: fadeScaleIn 0.4s ease-out forwards;
+  opacity: 0;
+  transform: translateY(10px) scale(0.97);
+}
+
+@keyframes fadeScaleIn {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
