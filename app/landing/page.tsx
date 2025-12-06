@@ -2,11 +2,25 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "../../lib/supabase";
+import { useRouter } from "next/navigation";
 
 export default function LandingPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+
+  // 🔥 AUTO-REDIRECT LOGGED-IN USERS TO APP DASHBOARD
+  useEffect(() => {
+    async function check() {
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.user) {
+        router.replace("/"); // Main app home page (Rewrite, Drafts, Account)
+      }
+    }
+    check();
+  }, [router]);
 
   async function joinWaitlist() {
     if (!email) return;
@@ -52,15 +66,16 @@ export default function LandingPage() {
           </Link>
 
           <Link
-            href="/rewrite"
+            href="/sign-in"
             className="px-8 py-4 bg-slate-200 text-slate-900 rounded-2xl text-lg font-semibold hover:bg-slate-300 transition"
           >
-            Try Live Demo
+            Sign In
           </Link>
         </motion.div>
 
-        {/* SOCIAL PROOF */}
-        <p className="mt-8 text-sm text-slate-500">Already helping people avoid fights daily.</p>
+        <p className="mt-8 text-sm text-slate-500">
+          Already helping people avoid fights daily.
+        </p>
       </section>
 
       {/* FEATURES GRID */}
@@ -108,9 +123,11 @@ export default function LandingPage() {
               <input
                 type="email"
                 placeholder="Enter your email"
-                className="border rounded-2xl px-4 py-3 text-sm w-full bg-slate-50 focus:bg-white focus:border-blue-500 transition"
+                className="border rounded-2xl px-4 py-3 text-sm w-full bg-slate-50
+                focus:bg-white focus:border-blue-500 transition"
                 onChange={(e) => setEmail(e.target.value)}
               />
+
               <button
                 onClick={joinWaitlist}
                 className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-semibold hover:bg-blue-500"
@@ -159,6 +176,7 @@ export default function LandingPage() {
       {/* FOOTER */}
       <footer className="py-10 text-center text-slate-500 text-sm">
         <p>© {new Date().getFullYear()} ToneMender — Say it better. Save it together.</p>
+
         <Link href="/" className="mt-2 underline block">
           Go to App
         </Link>
