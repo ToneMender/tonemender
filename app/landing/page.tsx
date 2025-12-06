@@ -39,7 +39,7 @@ export default function MarketingLandingPage() {
           transition={{ duration: 0.6 }}
           className="text-5xl sm:text-6xl font-extrabold tracking-tight"
         >
-          Rewrite emotionally charged texts  
+          Rewrite emotionally charged texts
           <span className="text-blue-600"> in seconds.</span>
         </motion.h1>
 
@@ -49,7 +49,7 @@ export default function MarketingLandingPage() {
           transition={{ delay: 0.15, duration: 0.6 }}
           className="mt-6 text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto"
         >
-          ToneMender transforms reactive, messy messages into calm, clear, 
+          ToneMender transforms reactive, messy messages into calm, clear,
           relationship-safe communication — without losing your meaning.
         </motion.p>
 
@@ -165,14 +165,32 @@ export default function MarketingLandingPage() {
   );
 }
 
+/* ======================================================
+   ✅ ONLY LOGIC CHANGE IS INSIDE THIS COMPONENT
+====================================================== */
+
 function EmailForm() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   async function joinWaitlist() {
-    if (!email) return;
-    setSubmitted(true);
-    // could POST to an API here
+    if (!email || loading) return;
+
+    setLoading(true);
+
+    const res = await fetch("/api/newsletter", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    setLoading(false);
+
+    if (res.ok) {
+      setSubmitted(true);
+      setEmail("");
+    }
   }
 
   return !submitted ? (
@@ -180,19 +198,21 @@ function EmailForm() {
       <input
         type="email"
         placeholder="Enter your email"
+        value={email}
         className="border rounded-2xl px-4 py-3 text-sm w-full bg-slate-50 focus:bg-white focus:border-blue-500 transition"
         onChange={(e) => setEmail(e.target.value)}
       />
       <button
         onClick={joinWaitlist}
-        className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-semibold hover:bg-blue-500"
+        disabled={loading}
+        className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-semibold hover:bg-blue-500 disabled:opacity-60"
       >
-        Join
+        {loading ? "Joining..." : "Join"}
       </button>
     </div>
   ) : (
     <p className="text-green-600 font-semibold mt-4">
-      ✔ You’re in! Expect updates soon.
+      ✔ Check your email to confirm — then you’re in!
     </p>
   );
 }
