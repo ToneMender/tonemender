@@ -19,12 +19,11 @@ export default function PageTransition({ children }: { children: ReactNode }) {
     }
   }
 
-  // Swipe-back gesture (from left edge)
+  // Swipe-back gesture
   function handleTouchStart(e: React.TouchEvent<HTMLDivElement>) {
     if (e.touches.length !== 1) return;
     const t = e.touches[0];
 
-    // Only start tracking if user starts very near left edge
     if (t.clientX > 40) return;
 
     touchStartX.current = t.clientX;
@@ -38,15 +37,13 @@ export default function PageTransition({ children }: { children: ReactNode }) {
     const dx = t.clientX - touchStartX.current;
     const dy = t.clientY - touchStartY.current;
 
-    // If mostly vertical movement, cancel tracking
     if (Math.abs(dy) > 60) {
       tracking.current = false;
       return;
     }
 
-    // Swipe right enough → go back
     if (dx > 70) {
-      if (typeof window !== "undefined" && window.history.length > 1) {
+      if (window.history.length > 1) {
         maybeVibrate(15);
         router.back();
       }
@@ -65,6 +62,7 @@ export default function PageTransition({ children }: { children: ReactNode }) {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
+      {/* Animate only the inner content, NOT the wrapper div */}
       <AnimatePresence mode="wait">
         <motion.div
           key={pathname}
@@ -73,8 +71,8 @@ export default function PageTransition({ children }: { children: ReactNode }) {
           exit={{ opacity: 0, x: -30, filter: "blur(8px)" }}
           transition={{
             type: "spring",
-            stiffness: 260,
-            damping: 30,
+            stiffness: 220,
+            damping: 28,
             mass: 0.9,
           }}
           className="w-full max-w-xl"
