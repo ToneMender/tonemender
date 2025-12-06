@@ -6,18 +6,16 @@ import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
 
-export default function LandingPage() {
-  const router = useRouter();
+export default function MarketingLandingPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const router = useRouter();
 
-  // 🔥 AUTO-REDIRECT LOGGED-IN USERS TO APP DASHBOARD
+  // 🔥 Redirect logged-in users to the real app homepage
   useEffect(() => {
     async function check() {
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.user) {
-        router.replace("/"); // Main app home page (Rewrite, Drafts, Account)
-      }
+      const { data } = await supabase.auth.getUser();
+      if (data.user) router.replace("/"); // send to app dashboard
     }
     check();
   }, [router]);
@@ -65,6 +63,7 @@ export default function LandingPage() {
             Start Free
           </Link>
 
+          {/* 🔥 CHANGED: "Try Demo" → "Sign In" */}
           <Link
             href="/sign-in"
             className="px-8 py-4 bg-slate-200 text-slate-900 rounded-2xl text-lg font-semibold hover:bg-slate-300 transition"
@@ -73,9 +72,8 @@ export default function LandingPage() {
           </Link>
         </motion.div>
 
-        <p className="mt-8 text-sm text-slate-500">
-          Already helping people avoid fights daily.
-        </p>
+        {/* SOCIAL PROOF */}
+        <p className="mt-8 text-sm text-slate-500">Already helping people avoid fights daily.</p>
       </section>
 
       {/* FEATURES GRID */}
@@ -123,11 +121,9 @@ export default function LandingPage() {
               <input
                 type="email"
                 placeholder="Enter your email"
-                className="border rounded-2xl px-4 py-3 text-sm w-full bg-slate-50
-                focus:bg-white focus:border-blue-500 transition"
+                className="border rounded-2xl px-4 py-3 text-sm w-full bg-slate-50 focus:bg-white focus:border-blue-500 transition"
                 onChange={(e) => setEmail(e.target.value)}
               />
-
               <button
                 onClick={joinWaitlist}
                 className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-semibold hover:bg-blue-500"
