@@ -1,30 +1,34 @@
 "use client";
 
-import { motion } from "framer-motion";
-import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import Link from "next/link";
 
 export default function MarketingLandingPage() {
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
   const router = useRouter();
+  const [checking, setChecking] = useState(true);
 
-  // 🔥 Redirect logged-in users to the real app homepage
+  // 🔥 If user is logged in → redirect to main dashboard "/"
   useEffect(() => {
     async function check() {
       const { data } = await supabase.auth.getUser();
-      if (data.user) router.replace("/"); // send to app dashboard
+      if (data.user) {
+        router.replace("/");
+        return;
+      }
+      setChecking(false);
     }
     check();
   }, [router]);
 
-  async function joinWaitlist() {
-    if (!email) return;
-    setSubmitted(true);
-  }
+  // Prevent flicker
+  if (checking) return null;
 
+  // --------------------------------------------------------
+  // ❤️ Logged-out Marketing Landing Page
+  // --------------------------------------------------------
   return (
     <main className="min-h-screen bg-white text-slate-900">
       {/* HERO SECTION */}
@@ -45,8 +49,8 @@ export default function MarketingLandingPage() {
           transition={{ delay: 0.15, duration: 0.6 }}
           className="mt-6 text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto"
         >
-          ToneMender transforms reactive, messy messages into 
-          calm, clear, relationship-safe communication — without losing your meaning.
+          ToneMender transforms reactive, messy messages into calm, clear, 
+          relationship-safe communication — without losing your meaning.
         </motion.p>
 
         {/* CTA BUTTONS */}
@@ -63,7 +67,6 @@ export default function MarketingLandingPage() {
             Start Free
           </Link>
 
-          {/* 🔥 CHANGED: "Try Demo" → "Sign In" */}
           <Link
             href="/sign-in"
             className="px-8 py-4 bg-slate-200 text-slate-900 rounded-2xl text-lg font-semibold hover:bg-slate-300 transition"
@@ -72,11 +75,12 @@ export default function MarketingLandingPage() {
           </Link>
         </motion.div>
 
-        {/* SOCIAL PROOF */}
-        <p className="mt-8 text-sm text-slate-500">Already helping people avoid fights daily.</p>
+        <p className="mt-8 text-sm text-slate-500">
+          Already helping people avoid fights daily.
+        </p>
       </section>
 
-      {/* FEATURES GRID */}
+      {/* FEATURES SECTION */}
       <section className="bg-slate-50 py-20">
         <div className="max-w-5xl mx-auto px-6">
           <h2 className="text-3xl font-bold mb-10 text-center">
@@ -116,26 +120,7 @@ export default function MarketingLandingPage() {
             Join the list for new features, early access, and special updates.
           </p>
 
-          {!submitted ? (
-            <div className="mt-6 flex flex-col sm:flex-row gap-3">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                className="border rounded-2xl px-4 py-3 text-sm w-full bg-slate-50 focus:bg-white focus:border-blue-500 transition"
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <button
-                onClick={joinWaitlist}
-                className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-semibold hover:bg-blue-500"
-              >
-                Join
-              </button>
-            </div>
-          ) : (
-            <p className="text-green-600 font-semibold mt-4">
-              ✔ You’re in! Expect updates soon.
-            </p>
-          )}
+          <EmailForm />
         </div>
       </section>
 
@@ -172,11 +157,42 @@ export default function MarketingLandingPage() {
       {/* FOOTER */}
       <footer className="py-10 text-center text-slate-500 text-sm">
         <p>© {new Date().getFullYear()} ToneMender — Say it better. Save it together.</p>
-
-        <Link href="/" className="mt-2 underline block">
+        <Link href="/sign-in" className="mt-2 underline block">
           Go to App
         </Link>
       </footer>
     </main>
+  );
+}
+
+function EmailForm() {
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  async function joinWaitlist() {
+    if (!email) return;
+    setSubmitted(true);
+    // could POST to an API here
+  }
+
+  return !submitted ? (
+    <div className="mt-6 flex flex-col sm:flex-row gap-3">
+      <input
+        type="email"
+        placeholder="Enter your email"
+        className="border rounded-2xl px-4 py-3 text-sm w-full bg-slate-50 focus:bg-white focus:border-blue-500 transition"
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <button
+        onClick={joinWaitlist}
+        className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-semibold hover:bg-blue-500"
+      >
+        Join
+      </button>
+    </div>
+  ) : (
+    <p className="text-green-600 font-semibold mt-4">
+      ✔ You’re in! Expect updates soon.
+    </p>
   );
 }
