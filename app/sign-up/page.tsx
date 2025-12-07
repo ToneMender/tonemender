@@ -37,7 +37,7 @@ export default function SignupPage() {
       return;
     }
 
-    router.replace("/sign-in");
+    router.replace("/check-email");
   }
 
   return (
