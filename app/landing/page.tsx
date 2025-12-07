@@ -86,7 +86,16 @@ export default function MarketingLandingPage() {
           <h2 className="text-3xl font-bold mb-10 text-center">
             What ToneMender helps you do
           </h2>
-
+<p className="text-slate-600 text-center mb-12">
+  Learn more about how a{" "}
+  <Link
+    href="/relationship-message-rewriter"
+    className="text-blue-600 underline font-medium"
+  >
+    relationship message rewriter
+  </Link>{" "}
+  helps prevent misunderstandings.
+</p>
           <div className="grid sm:grid-cols-3 gap-8">
             <div className="p-6 bg-white rounded-2xl shadow-sm border">
               <h3 className="text-lg font-semibold mb-2">🧘 Calm the tone</h3>
@@ -157,6 +166,9 @@ export default function MarketingLandingPage() {
       {/* FOOTER */}
       <footer className="py-10 text-center text-slate-500 text-sm">
         <p>© {new Date().getFullYear()} ToneMender — Say it better. Save it together.</p>
+        <Link href="/blog" className="underline block mb-2">
+  Read the Blog
+</Link>
         <Link href="/sign-in" className="mt-2 underline block">
           Go to App
         </Link>
