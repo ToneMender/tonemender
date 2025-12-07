@@ -12,6 +12,11 @@ export default function AccountPage() {
   const [stats, setStats] = useState({ today: 0, total: 0 });
   const [loading, setLoading] = useState(true);
 
+  // ➕ Change email state
+  const [newEmail, setNewEmail] = useState("");
+  const [emailMessage, setEmailMessage] = useState("");
+  const [emailError, setEmailError] = useState("");
+
   useEffect(() => {
     async function load() {
       const { data } = await supabase.auth.getUser();
@@ -37,9 +42,8 @@ export default function AccountPage() {
         .select("*")
         .eq("user_id", data.user.id);
 
-      const today = usage?.filter((u) =>
-        u.created_at.startsWith(todayStr)
-      ).length || 0;
+      const today =
+        usage?.filter((u) => u.created_at.startsWith(todayStr)).length || 0;
 
       setStats({ today, total: usage?.length || 0 });
       setLoading(false);
@@ -91,11 +95,34 @@ export default function AccountPage() {
     if (json.url) window.location.href = json.url;
   }
 
+  // ➕ Change email handler
+  async function handleChangeEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setEmailError("");
+    setEmailMessage("");
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!emailRegex.test(newEmail)) {
+      setEmailError("Please enter a valid email address");
+      return;
+    }
+
+    const { error } = await supabase.auth.updateUser({ email: newEmail });
+    if (error) {
+      setEmailError(error.message);
+      return;
+    }
+
+    setEmailMessage(
+      "We sent a confirmation link to your new email. Please verify it to complete the change."
+    );
+    setNewEmail("");
+  }
+
   if (loading) return <p className="p-5">Loading...</p>;
 
   return (
     <main className="max-w-xl mx-auto p-6">
-
       <button
         onClick={() => router.push("/")}
         className="mb-4 text-blue-600 underline"
@@ -108,8 +135,12 @@ export default function AccountPage() {
       {/* PROFILE */}
       <div className="border p-4 rounded mb-6 bg-white">
         <h2 className="text-xl font-semibold mb-2">Profile</h2>
-        <p><strong>Email:</strong> {email}</p>
-        <p><strong>Status:</strong> {isPro ? "🚀 Pro Member" : "Free User"}</p>
+        <p>
+          <strong>Email:</strong> {email}
+        </p>
+        <p>
+          <strong>Status:</strong> {isPro ? "🚀 Pro Member" : "Free User"}
+        </p>
 
         {isPro && (
           <button
@@ -124,13 +155,45 @@ export default function AccountPage() {
       {/* USAGE */}
       <div className="border p-4 rounded mb-6 bg-white">
         <h2 className="text-xl font-semibold mb-2">Usage</h2>
-        <p><strong>Rewrites Today:</strong> {stats.today}</p>
-        <p><strong>Total Rewrites:</strong> {stats.total}</p>
+        <p>
+          <strong>Rewrites Today:</strong> {stats.today}
+        </p>
+        <p>
+          <strong>Total Rewrites:</strong> {stats.total}
+        </p>
       </div>
 
       {/* SECURITY */}
       <div className="border p-4 rounded mb-6 bg-white">
-        <h2 className="text-xl font-semibold mb-2">Security</h2>
+        <h2 className="text-xl font-semibold mb-4">Security</h2>
+
+        {/* ➕ Change Email */}
+        <form onSubmit={handleChangeEmail} className="mb-4">
+          <p className="font-medium mb-2">Change Email</p>
+
+          {emailError && <p className="text-red-500 text-sm mb-1">{emailError}</p>}
+          {emailMessage && (
+            <p className="text-green-600 text-sm mb-1">{emailMessage}</p>
+          )}
+
+          <div className="flex gap-2">
+            <input
+              type="email"
+              placeholder="New email address"
+              className="border p-2 rounded flex-1"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              required
+            />
+            <button
+              type="submit"
+              className="bg-green-600 text-white px-3 py-2 rounded"
+            >
+              Update
+            </button>
+          </div>
+        </form>
+
         <button
           onClick={handleLogout}
           className="bg-gray-800 text-white px-4 py-2 rounded"
