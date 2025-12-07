@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -43,6 +44,12 @@ export default function SignupPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-white">
       <div className="w-[360px]">
+        <Link
+  href="/landing"
+  className="inline-block mb-4 text-sm text-slate-600 hover:underline"
+>
+  ← Back to home
+</Link>
         <h1 className="text-2xl font-bold mb-4 text-center">Create Account</h1>
 
         {error && <p className="text-red-500 mb-2">{error}</p>}

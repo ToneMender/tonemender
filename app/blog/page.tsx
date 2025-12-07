@@ -9,6 +9,12 @@ export const metadata = {
 export default function BlogIndexPage() {
   return (
     <main className="max-w-4xl mx-auto px-6 py-16 text-slate-900">
+      <Link
+  href="/landing"
+  className="inline-block mb-8 text-sm text-slate-600 hover:underline"
+>
+  ← Back to home
+</Link>
       <h1 className="text-4xl font-extrabold tracking-tight mb-6">
         ToneMender Blog
       </h1>

@@ -10,6 +10,12 @@ export const metadata = {
 export default function RelationshipMessageRewriterPage() {
   return (
     <main className="max-w-4xl mx-auto px-6 py-16 text-slate-900">
+      <Link
+  href="/landing"
+  className="inline-block mb-8 text-sm text-slate-600 hover:underline"
+>
+  ← Back to home
+</Link>
           <Script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

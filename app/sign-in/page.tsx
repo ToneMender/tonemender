@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -58,6 +59,12 @@ async function handleResetPassword() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-white">
       <div className="w-[360px]">
+        <Link
+  href="/landing"
+  className="inline-block mb-4 text-sm text-slate-600 hover:underline"
+>
+  ← Back to home
+</Link>
         <h1 className="text-2xl font-bold mb-4 text-center">Sign In</h1>
 
         {error && <p className="text-red-500">{error}</p>}

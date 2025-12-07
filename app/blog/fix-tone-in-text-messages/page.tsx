@@ -9,6 +9,12 @@ export const metadata = {
 export default function FixTonePost() {
   return (
     <main className="max-w-3xl mx-auto px-6 py-16 text-slate-900">
+      <Link
+  href="/blog"
+  className="inline-block mb-8 text-sm text-slate-600 hover:underline"
+>
+  ← Back to blog
+</Link>
       <h1 className="text-4xl font-extrabold tracking-tight mb-6">
         How to Fix Tone in Text Messages (Without Sounding Fake)
       </h1>
@@ -45,7 +51,7 @@ export default function FixTonePost() {
 
       <div className="mt-14 text-center">
         <Link
-          href="/relationship-message-rewriter"
+          href="/sign-up"
           className="inline-block px-8 py-4 bg-blue-600 text-white rounded-2xl text-lg font-semibold hover:bg-blue-500 transition"
         >
           Try ToneMender Free
