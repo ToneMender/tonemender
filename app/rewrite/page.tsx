@@ -267,7 +267,7 @@ export default function RewritePage() {
   // SHARE HANDLERS
   // ---------------------------------------------------------
   async function shareApp() {
-    const url = "https://tonemender.vercel.app";
+    const url = "https://tonemender.com";
 
     try {
       if (navigator.share) {
@@ -296,7 +296,7 @@ export default function RewritePage() {
       return;
     }
 
-    const shareText = `Before:\n${message.trim()}\n\nAfter:\n${current}\n\nWritten with ToneMender (https://tonemender.vercel.app)`;
+    const shareText = `Before:\n${message.trim()}\n\nAfter:\n${current}\n\nWritten with ToneMender (https://tonemender.com)`;
 
     try {
       if (navigator.share) {
@@ -541,7 +541,7 @@ export default function RewritePage() {
                     </p>
                   </div>
                   <p className="text-[10px] text-gray-400 mt-3">
-                    Generated with tonemender.vercel.app
+                    Generated with tonemender.com
                   </p>
                 </div>
               )}
