@@ -1,6 +1,4 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import BackButton from "./BackButton";
 
 export const metadata = {
   title: "Privacy Policy | ToneMender",
@@ -9,16 +7,11 @@ export const metadata = {
 };
 
 export default function PrivacyPage() {
-  const router = useRouter();
   return (
     <main className="bg-white">
       <div className="max-w-3xl mx-auto px-6 py-14 text-gray-800 leading-relaxed">
-        <button
-  onClick={() => router.back()}
-  className="inline-block mb-6 text-sm text-gray-600 hover:underline"
->
-  ← Back
-</button>
+        <BackButton />
+
         <h1 className="text-3xl font-bold mb-2">Privacy Policy</h1>
         <p className="text-sm text-gray-500 mb-10">
           Last updated: December 2025
@@ -42,7 +35,9 @@ export default function PrivacyPage() {
           <li>Subscription and plan status</li>
         </ul>
 
-        <p className="mt-4 font-medium">Information collected automatically:</p>
+        <p className="mt-4 font-medium">
+          Information collected automatically:
+        </p>
         <ul className="list-disc pl-6 mt-2">
           <li>Usage and interaction data</li>
           <li>Device, IP address, and browser data</li>
@@ -63,6 +58,7 @@ export default function PrivacyPage() {
         <h2 className="text-xl font-semibold pt-8 border-t">
           3. Message Data & AI Processing
         </h2>
+
         <p className="mt-4">
           Messages you submit are stored long term and processed using artificial
           intelligence services, including OpenAI. We do not claim ownership of
@@ -72,6 +68,7 @@ export default function PrivacyPage() {
         <h2 className="text-xl font-semibold pt-8 border-t">
           4. Data Storage & Security
         </h2>
+
         <p className="mt-4">
           Data is stored using Supabase infrastructure. While we implement
           reasonable safeguards, no system is completely secure.
@@ -80,6 +77,7 @@ export default function PrivacyPage() {
         <h2 className="text-xl font-semibold pt-8 border-t">
           5. Third-Party Services
         </h2>
+
         <ul className="list-disc pl-6 mt-4">
           <li>Supabase – authentication and database</li>
           <li>OpenAI – AI message processing</li>
@@ -90,14 +88,13 @@ export default function PrivacyPage() {
         <h2 className="text-xl font-semibold pt-8 border-t">
           6. Your Rights
         </h2>
+
         <p className="mt-4">
           You may access, update, or delete your account at any time directly
           within the app.
         </p>
 
-        <h2 className="text-xl font-semibold pt-8 border-t">
-          7. Contact
-        </h2>
+        <h2 className="text-xl font-semibold pt-8 border-t">7. Contact</h2>
         <p className="mt-4">Email: support@tonemender.com</p>
       </div>
     </main>

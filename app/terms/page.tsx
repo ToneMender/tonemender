@@ -1,6 +1,4 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import BackButton from "./BackButton";
 
 export const metadata = {
   title: "Terms of Service | ToneMender",
@@ -9,16 +7,11 @@ export const metadata = {
 };
 
 export default function TermsPage() {
-  const router = useRouter();
   return (
     <main className="bg-white">
       <div className="max-w-3xl mx-auto px-6 py-14 text-gray-800 leading-relaxed">
-        <button
-  onClick={() => router.back()}
-  className="inline-block mb-6 text-sm text-gray-600 hover:underline"
->
-  ← Back
-</button>
+        <BackButton />
+
         <h1 className="text-3xl font-bold mb-2">Terms of Service</h1>
         <p className="text-sm text-gray-500 mb-10">
           Last updated: December 2025
@@ -86,9 +79,7 @@ export default function TermsPage() {
           consequential damages.
         </p>
 
-        <h2 className="text-xl font-semibold pt-8 border-t">
-          8. Contact
-        </h2>
+        <h2 className="text-xl font-semibold pt-8 border-t">8. Contact</h2>
         <p className="mt-4">Email: support@tonemender.com</p>
       </div>
     </main>
