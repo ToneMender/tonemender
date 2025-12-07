@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+const [resetSent, setResetSent] = useState(false);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -32,7 +33,28 @@ export default function LoginPage() {
       router.replace("/");
     }, 300);
   }
+async function handleResetPassword() {
+  if (!email) {
+    setError("Enter your email first.");
+    return;
+  }
 
+  setLoading(true);
+  setError("");
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: "https://tonemender.com/reset-password",
+  });
+
+  setLoading(false);
+
+  if (error) {
+    setError(error.message);
+    return;
+  }
+
+  setResetSent(true);
+}
   return (
     <main className="flex min-h-screen items-center justify-center bg-white">
       <div className="w-[360px]">
@@ -63,7 +85,19 @@ export default function LoginPage() {
             {loading ? "Logging in..." : "Login"}
           </button>
         </form>
+<button
+  type="button"
+  onClick={handleResetPassword}
+  className="mt-3 text-sm text-blue-600 underline text-center w-full"
+>
+  Forgot your password?
+</button>
 
+{resetSent && (
+  <p className="mt-2 text-sm text-green-600 text-center">
+    ✅ Password reset email sent
+  </p>
+)}
         <p className="mt-4 text-center text-sm">
           Don’t have an account?{" "}
           <a href="/sign-up" className="text-blue-600 underline">
